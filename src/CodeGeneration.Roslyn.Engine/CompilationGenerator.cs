@@ -325,7 +325,7 @@ namespace CodeGeneration.Roslyn.Engine
                                      where AllowedAssemblyExtensions.Contains(Path.GetExtension(file))
                                      select file;
 
-            string matchingRefAssembly = matchingRefAssemblies.Concat(matchingAssemblies).FirstOrDefault();
+            string matchingRefAssembly = matchingAssemblies.Concat(matchingRefAssemblies).FirstOrDefault();
             if (matchingRefAssembly != null)
             {
                 this.loadedAssemblies.Add(matchingRefAssembly);

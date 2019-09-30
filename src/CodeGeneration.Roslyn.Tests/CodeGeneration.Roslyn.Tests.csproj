@@ -21,11 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CodeGeneration.Roslyn.Engine\CodeGeneration.Roslyn.Engine.csproj" />
     <ProjectReference Include="..\CodeGeneration.Roslyn.Tests.Generators\CodeGeneration.Roslyn.Tests.Generators.csproj" />
-    <ProjectReference Include="..\CodeGeneration.Roslyn.Tool\CodeGeneration.Roslyn.Tool.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
-      <UndefineProperties>TargetFramework</UndefineProperties>
-    </ProjectReference>
   </ItemGroup>
 
   <Import Project="..\CodeGeneration.Roslyn.BuildTime\build\CodeGeneration.Roslyn.BuildTime.targets" />

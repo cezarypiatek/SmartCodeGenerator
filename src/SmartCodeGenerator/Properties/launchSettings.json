@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SmartCodeGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": "-p \"c:\\Repositories\\MappingGenerator\\MappingGenerator\\OnBuildGenerator.Sample\\OnBuildGenerator.Sample.csproj\" -o \"c:\\tmp\\generator\" -g \"c:\\Repositories\\MappingGenerator\\MappingGenerator\\OnBuildGenerator\\bin\\Debug\\netcoreapp3.0\\OnBuildGenerator.dll\""
+    }
+  }
+}

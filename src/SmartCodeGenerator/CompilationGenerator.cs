@@ -61,7 +61,6 @@ namespace CodeGeneration.Roslyn.Engine
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
         public async Task Generate(Project project, IProgress<Diagnostic> progress, CancellationToken cancellationToken = default)
         {
-            var xx = new CodeGenerationAttributeAttribute("");
 
             var compilation = await project.GetCompilationAsync(cancellationToken) as CSharpCompilation;
             if (compilation == null)
@@ -80,28 +79,24 @@ namespace CodeGeneration.Roslyn.Engine
             {
                 foreach (var document in project.Documents)
                 {
-                    var inputSyntaxTree = await document.GetSyntaxTreeAsync(cancellationToken);
+                    
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    string sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputSyntaxTree.FilePath)), 0, 6).Replace('/', '-');
-                    string outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputSyntaxTree.FilePath) + $".{sourceHash}.generated.cs");
+                    var documentFilePath = document.FilePath;
+                    string sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(documentFilePath)), 0, 6).Replace('/', '-');
+                    string outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(documentFilePath) + $".{sourceHash}.generated.cs");
 
                     // Code generation is relatively fast, but it's not free.
                     // So skip files that haven't changed since we last generated them.
                     DateTime outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-                    if (File.GetLastWriteTime(inputSyntaxTree.FilePath) > outputLastModified || assembliesLastModified > outputLastModified)
+                    if (File.GetLastWriteTime(documentFilePath) > outputLastModified || assembliesLastModified > outputLastModified)
                     {
                         int retriesLeft = 3;
                         do
                         {
                             try
                             {
-                                var generatedSyntaxTree = await DocumentTransform.TransformAsync(
-                                    compilation,
-                                    inputSyntaxTree,
-                                    this.ProjectDirectory,
-                                    this.LoadAssembly,
-                                    progress);
+                                var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, this.ProjectDirectory, this.LoadAssembly, progress, cancellationToken);
 
                                 var outputText = generatedSyntaxTree.GetText(cancellationToken);
                                 await using (var outputFileStream = File.OpenWrite(outputFilePath))
@@ -122,7 +117,7 @@ namespace CodeGeneration.Roslyn.Engine
                             }
                             catch (Exception ex)
                             {
-                                ReportError(progress, "CGR001", inputSyntaxTree, ex);
+                                ReportError(progress, "CGR001", document, ex);
                                 fileFailures.Add(ex);
                                 break;
                             }
@@ -147,13 +142,13 @@ namespace CodeGeneration.Roslyn.Engine
                 return DateTime.MinValue;
             }
 
-            var timestamps = (from path in File.ReadAllLines(assemblyListPath)
-                              where File.Exists(path)
-                              select File.GetLastWriteTime(path)).ToList();
+            var timestamps = (File.ReadAllLines(assemblyListPath)
+                .Where(File.Exists)
+                .Select(File.GetLastWriteTime)).ToList();
             return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
         }
 
-        private static void ReportError(IProgress<Diagnostic> progress, string id, SyntaxTree inputSyntaxTree, Exception ex)
+        private static void ReportError(IProgress<Diagnostic> progress, string id, Document inputSyntaxTree, Exception ex)
         {
             Console.Error.WriteLine($"Exception in file processing: {ex}");
 
@@ -173,7 +168,7 @@ namespace CodeGeneration.Roslyn.Engine
                 DiagnosticSeverity.Error,
                 true);
 
-            var location = inputSyntaxTree != null ? Location.Create(inputSyntaxTree, TextSpan.FromBounds(0, 0)) : Location.None;
+            var location = inputSyntaxTree != null ? Location.Create(inputSyntaxTree.FilePath, TextSpan.FromBounds(0, 0), new LinePositionSpan(LinePosition.Zero, LinePosition.Zero)) : Location.None;
 
             var messageArgs = new object[]
             {

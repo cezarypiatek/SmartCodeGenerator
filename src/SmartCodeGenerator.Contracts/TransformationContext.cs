@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Andrew Arnott. All rights reserved.
 // Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
 
+using Microsoft.CodeAnalysis.Editing;
+
 namespace CodeGeneration.Roslyn
 {
     using System.Collections.Generic;
@@ -22,13 +24,13 @@ namespace CodeGeneration.Roslyn
         /// <param name="projectDirectory">The absolute path of the directory where the project file is located.</param>
         /// <param name="compilationUnitUsings">The using directives already queued to be generated.</param>
         /// <param name="compilationUnitExterns">The extern aliases already queued to be generated.</param>
-        public TransformationContext(
-            CSharpSyntaxNode processingNode,
+        /// <param name="syntaxGenerator"></param>
+        public TransformationContext(CSharpSyntaxNode processingNode,
             SemanticModel semanticModel,
             CSharpCompilation compilation,
             string projectDirectory,
             IReadOnlyList<UsingDirectiveSyntax> compilationUnitUsings,
-            IReadOnlyList<ExternAliasDirectiveSyntax> compilationUnitExterns)
+            IReadOnlyList<ExternAliasDirectiveSyntax> compilationUnitExterns, SyntaxGenerator syntaxGenerator)
         {
             ProcessingNode = processingNode;
             SemanticModel = semanticModel;
@@ -36,6 +38,7 @@ namespace CodeGeneration.Roslyn
             ProjectDirectory = projectDirectory;
             CompilationUnitUsings = compilationUnitUsings;
             CompilationUnitExterns = compilationUnitExterns;
+            SyntaxGenerator = syntaxGenerator;
         }
 
         /// <summary>Gets the syntax node the generator attribute is found on.</summary>
@@ -55,5 +58,7 @@ namespace CodeGeneration.Roslyn
 
         /// <summary>Gets a collection of extern aliases already queued to be generated.</summary>
         public IReadOnlyList<ExternAliasDirectiveSyntax> CompilationUnitExterns { get; }
+
+        public SyntaxGenerator SyntaxGenerator { get; }
     }
 }

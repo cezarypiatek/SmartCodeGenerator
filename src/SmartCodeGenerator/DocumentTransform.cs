@@ -2,6 +2,10 @@
 // Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
 
 
+using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.Simplification;
+
 namespace CodeGeneration.Roslyn.Engine
 {
     using System;
@@ -44,14 +48,15 @@ namespace CodeGeneration.Roslyn.Engine
         /// <returns>A task whose result is the generated document.</returns>
         public static async Task<SyntaxTree> TransformAsync(
             CSharpCompilation compilation,
-            SyntaxTree inputDocument,
+            Document document,
             string projectDirectory,
             Func<AssemblyName, Assembly> assemblyLoader,
-            IProgress<Diagnostic> progress)
+            IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
-            var inputSemanticModel = compilation.GetSemanticModel(inputDocument);
-            var inputCompilationUnit = inputDocument.GetCompilationUnitRoot();
-
+            
+            var inputSyntaxTree = await document.GetSyntaxTreeAsync();
+            var inputSemanticModel = await document.GetSemanticModelAsync();
+            var inputCompilationUnit = inputSyntaxTree.GetCompilationUnitRoot();
             var emittedExterns = inputCompilationUnit
                 .Externs
                 .Select(x => x.WithoutTrivia())
@@ -64,8 +69,8 @@ namespace CodeGeneration.Roslyn.Engine
 
             var emittedAttributeLists = new List<AttributeListSyntax>();
             var emittedMembers = new List<MemberDeclarationSyntax>();
-
-            foreach (var memberNode in GetMemberDeclarations(inputDocument))
+            var syntaxGenerator = SyntaxGenerator.GetGenerator(document);
+            foreach (var memberNode in GetMemberDeclarations(inputSyntaxTree))
             {
                 var attributeData = GetAttributeData(compilation, inputSemanticModel, memberNode);
                 if (attributeData.Length == 0)
@@ -75,13 +80,13 @@ namespace CodeGeneration.Roslyn.Engine
                 
                 //TODO: Add caching for found generators
                 var generators = GeneratorFinder.FindCodeGenerators(attributeData, assemblyLoader).ToList();
-                var context = new TransformationContext(memberNode, inputSemanticModel, compilation, projectDirectory, emittedUsings, emittedExterns);
+                var context = new TransformationContext(memberNode, inputSemanticModel, compilation, projectDirectory, emittedUsings, emittedExterns, syntaxGenerator);
 
-                foreach (var richGenerator in generators)
+                foreach (var generator in generators)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    var emitted = await richGenerator.GenerateRichAsync(context, progress, CancellationToken.None);
-
+                    var emitted = await generator.GenerateRichAsync(context, progress, cancellationToken);
                     emittedExterns.AddRange(emitted.Externs);
                     emittedUsings.AddRange(emitted.Usings);
                     emittedAttributeLists.AddRange(emitted.AttributeLists);
@@ -103,7 +108,10 @@ namespace CodeGeneration.Roslyn.Engine
                         SyntaxFactory.List(emittedMembers))
                     .WithLeadingTrivia(SyntaxFactory.Comment(GeneratedByAToolPreamble))
                     .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed)
-                    .NormalizeWhitespace();
+                    .NormalizeWhitespace()
+                    .WithAdditionalAnnotations(Formatter.Annotation)
+                    .WithAdditionalAnnotations(Simplifier.Annotation)
+                ;
 
             return compilationUnit.SyntaxTree;
         }

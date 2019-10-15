@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace CodeGeneration.Roslyn.Engine
+namespace SmartCodeGenerator.Contracts
 {
     public abstract class EnrichingCodeGeneratorProxy : ICodeGenerator
     {
@@ -17,15 +17,15 @@ namespace CodeGeneration.Roslyn.Engine
         /// <param name="progress">A way to report diagnostic messages.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The generated member syntax to be added to the project.</returns>
-        protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
+        protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateMembersAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
 
-        public async Task<RichGenerationResult> GenerateRichAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        public async Task<GenerationResult> GenerateAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
-            var generatedMembers = await GenerateAsync(context, progress, CancellationToken.None);
+            var generatedMembers = await GenerateMembersAsync(context, progress, CancellationToken.None);
 
             // Figure out ancestry for the generated type, including nesting types and namespaces.
             var wrappedMembers = context.ProcessingNode.Ancestors().Aggregate(generatedMembers, WrapInAncestor);
-            return new RichGenerationResult { Members = wrappedMembers };
+            return new GenerationResult { Members = wrappedMembers };
         }
 
         private static SyntaxList<MemberDeclarationSyntax> WrapInAncestor(SyntaxList<MemberDeclarationSyntax> generatedMembers, SyntaxNode ancestor)

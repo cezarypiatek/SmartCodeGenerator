@@ -1,23 +1,19 @@
-﻿// Copyright (c) Andrew Arnott. All rights reserved.
-// Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
-
-using SmartCodeGenerator;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
+using SmartCodeGenerator.Contracts;
 using SmartCodeGenerator.PluginArchitectureDemo;
 
-namespace CodeGeneration.Roslyn.Engine
+namespace SmartCodeGenerator
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Reflection;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.CodeAnalysis;
-    using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.Text;
-
     /// <summary>
     /// Runs code generation for every applicable document and handles resulting syntax trees,
     /// saving them to <see cref="IntermediateOutputDirectory"/>.

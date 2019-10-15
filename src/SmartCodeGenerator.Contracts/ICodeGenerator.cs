@@ -1,13 +1,10 @@
-﻿// Copyright (c) Andrew Arnott. All rights reserved.
-// Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
 
-namespace CodeGeneration.Roslyn
+namespace SmartCodeGenerator.Contracts
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.CodeAnalysis;
-
     /// <summary>
     /// Describes a code generator that responds to attributes on members to generate code,
     /// and returns compilation unit members.
@@ -21,6 +18,6 @@ namespace CodeGeneration.Roslyn
         /// <param name="progress">A way to report diagnostic messages.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The generated syntax nodes to be added to the compilation unit added to the project.</returns>
-        Task<RichGenerationResult> GenerateRichAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
+        Task<GenerationResult> GenerateAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
     }
 }

@@ -1,22 +1,18 @@
-﻿// Copyright (c) Andrew Arnott. All rights reserved.
-// Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
-
+﻿using System.Collections.Generic;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 
-namespace CodeGeneration.Roslyn
+namespace SmartCodeGenerator.Contracts
 {
-    using System.Collections.Generic;
-    using Microsoft.CodeAnalysis;
-    using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.CSharp.Syntax;
-
     /// <summary>
-    /// Provides all the inputs and context necessary to perform the code generation.
+    ///     Provides all the inputs and context necessary to perform the code generation.
     /// </summary>
     public class TransformationContext
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="TransformationContext" /> class.
+        ///     Initializes a new instance of the <see cref="TransformationContext" /> class.
         /// </summary>
         /// <param name="processingNode">The syntax node the generator attribute is found on.</param>
         /// <param name="semanticModel">The semantic model.</param>
@@ -41,22 +37,34 @@ namespace CodeGeneration.Roslyn
             SyntaxGenerator = syntaxGenerator;
         }
 
-        /// <summary>Gets the syntax node the generator attribute is found on.</summary>
+        /// <summary>
+        /// Gets the syntax node the generator attribute is found on.
+        /// </summary>
         public CSharpSyntaxNode ProcessingNode { get; }
 
-        /// <summary>Gets the semantic model for the <see cref="Compilation" />.</summary>
+        /// <summary>
+        /// Gets the semantic model for the <see cref="Compilation" />.
+        /// </summary>
         public SemanticModel SemanticModel { get; }
 
-        /// <summary>Gets the overall compilation being generated for.</summary>
+        /// <summary>
+        /// Gets the overall compilation being generated for.
+        /// </summary>
         public CSharpCompilation Compilation { get; }
 
-        /// <summary>Gets the absolute path of the directory where the project file is located.</summary>
+        /// <summary>
+        /// Gets the absolute path of the directory where the project file is located.
+        /// </summary>
         public string ProjectDirectory { get; }
 
-        /// <summary>Gets a collection of using directives already queued to be generated.</summary>
+        /// <summary>
+        /// Gets a collection of using directives already queued to be generated.
+        /// </summary>
         public IReadOnlyList<UsingDirectiveSyntax> CompilationUnitUsings { get; }
 
-        /// <summary>Gets a collection of extern aliases already queued to be generated.</summary>
+        /// <summary>
+        /// Gets a collection of extern aliases already queued to be generated.
+        /// </summary>
         public IReadOnlyList<ExternAliasDirectiveSyntax> CompilationUnitExterns { get; }
 
         public SyntaxGenerator SyntaxGenerator { get; }

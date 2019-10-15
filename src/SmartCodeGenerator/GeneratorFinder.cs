@@ -5,8 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using SmartCodeGenerator.Contracts;
 
-namespace CodeGeneration.Roslyn.Engine
+namespace SmartCodeGenerator
 {
     internal static class GeneratorFinder
     {
@@ -59,7 +60,7 @@ namespace CodeGeneration.Roslyn.Engine
                 throw;
             }
         }
-        private static readonly string MarkerAttributeName = typeof(CodeGenerationAttributeAttribute).Name;
+        private static readonly string MarkerAttributeName = typeof(CodeGenerationMarkerAttribute).Name;
         private static Type? GetCodeGeneratorTypeForAttribute(AttributeData attributeType, Func<AssemblyName, Assembly?> assemblyLoader)
         {
             var assembly1 = typeof(ICodeGenerator).Assembly;

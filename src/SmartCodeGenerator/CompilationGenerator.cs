@@ -59,9 +59,9 @@ namespace CodeGeneration.Roslyn.Engine
         /// <param name="project"></param>
         /// <param name="progress">Optional handler of diagnostics provided by code generator.</param>
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
-        public async Task Generate(Project project, IProgress<Diagnostic> progress, CancellationToken cancellationToken = default)
+        public async Task Generate(Project project, IProgress<Diagnostic> progress,
+            CancellationToken cancellationToken = default)
         {
-
             var compilation = await project.GetCompilationAsync(cancellationToken) as CSharpCompilation;
             if (compilation == null)
             {

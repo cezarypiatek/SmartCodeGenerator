@@ -4,6 +4,7 @@
 
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Simplification;
 
 namespace CodeGeneration.Roslyn.Engine
@@ -41,13 +42,14 @@ namespace CodeGeneration.Roslyn.Engine
         /// Produces a new document in response to any code generation attributes found in the specified document.
         /// </summary>
         /// <param name="compilation">The compilation to which the document belongs.</param>
-        /// <param name="inputDocument">The document to scan for generator attributes.</param>
+        /// <param name="document"></param>
         /// <param name="projectDirectory">The path of the <c>.csproj</c> project file.</param>
         /// <param name="assemblyLoader">A function that can load an assembly with the given name.</param>
         /// <param name="progress">Reports warnings and errors in code generation.</param>
+        /// <param name="cancellationToken"></param>
+        /// <param name="inputDocument">The document to scan for generator attributes.</param>
         /// <returns>A task whose result is the generated document.</returns>
-        public static async Task<SyntaxTree> TransformAsync(
-            CSharpCompilation compilation,
+        public static async Task<SyntaxTree> TransformAsync(CSharpCompilation compilation,
             Document document,
             string projectDirectory,
             Func<AssemblyName, Assembly> assemblyLoader,
@@ -81,7 +83,6 @@ namespace CodeGeneration.Roslyn.Engine
                 //TODO: Add caching for found generators
                 var generators = GeneratorFinder.FindCodeGenerators(attributeData, assemblyLoader).ToList();
                 var context = new TransformationContext(memberNode, inputSemanticModel, compilation, projectDirectory, emittedUsings, emittedExterns, syntaxGenerator);
-
                 foreach (var generator in generators)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -94,11 +95,12 @@ namespace CodeGeneration.Roslyn.Engine
                 }
             }
 
-            return GenerateSyntaxTree(emittedExterns, emittedUsings, emittedAttributeLists, emittedMembers);
+            return await GenerateSyntaxTree(emittedExterns, emittedUsings, emittedAttributeLists, emittedMembers, document);
         }
 
-        private static SyntaxTree GenerateSyntaxTree(List<ExternAliasDirectiveSyntax> emittedExterns, List<UsingDirectiveSyntax> emittedUsings, List<AttributeListSyntax> emittedAttributeLists,
-            List<MemberDeclarationSyntax> emittedMembers)
+        private static async Task<SyntaxTree> GenerateSyntaxTree(List<ExternAliasDirectiveSyntax> emittedExterns,
+            List<UsingDirectiveSyntax> emittedUsings, List<AttributeListSyntax> emittedAttributeLists,
+            List<MemberDeclarationSyntax> emittedMembers, Document document)
         {
             var compilationUnit =
                 SyntaxFactory.CompilationUnit(
@@ -108,12 +110,16 @@ namespace CodeGeneration.Roslyn.Engine
                         SyntaxFactory.List(emittedMembers))
                     .WithLeadingTrivia(SyntaxFactory.Comment(GeneratedByAToolPreamble))
                     .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed)
-                    .NormalizeWhitespace()
                     .WithAdditionalAnnotations(Formatter.Annotation)
                     .WithAdditionalAnnotations(Simplifier.Annotation)
                 ;
 
-            return compilationUnit.SyntaxTree;
+           var root = compilationUnit.SyntaxTree.GetRoot();
+           var formattedRoot = Formatter.Format(root, Formatter.Annotation, document.Project.Solution.Workspace, document.Project.Solution.Workspace.Options);
+           var fakeDocument =  document.WithSyntaxRoot(formattedRoot);
+
+           var simplifiedDocument =   await Simplifier.ReduceAsync(fakeDocument);
+           return compilationUnit.SyntaxTree.WithRootAndOptions(await simplifiedDocument.GetSyntaxRootAsync(), compilationUnit.SyntaxTree.Options);
         }
 
         private static IEnumerable<CSharpSyntaxNode> GetMemberDeclarations(SyntaxTree inputDocument)

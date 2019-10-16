@@ -19,7 +19,11 @@ namespace SmartCodeGenerator.Contracts
         /// <returns>The generated member syntax to be added to the project.</returns>
         protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateMembersAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
 
-        public async Task<GenerationResult> GenerateAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        public abstract bool AcceptsMembersMarkWith(AttributeData attributeData);
+
+        public async Task<GenerationResult> GenerateAsync(AttributeData markerAttribute, TransformationContext context,
+            IProgress<Diagnostic> progress,
+            CancellationToken cancellationToken)
         {
             var generatedMembers = await GenerateMembersAsync(context, progress, CancellationToken.None);
 

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -39,15 +38,15 @@ namespace SmartCodeGenerator
         /// <param name="compilation">The compilation to which the document belongs.</param>
         /// <param name="document"></param>
         /// <param name="projectDirectory">The path of the <c>.csproj</c> project file.</param>
-        /// <param name="assemblyLoader">A function that can load an assembly with the given name.</param>
+        /// <param name="generatorPluginProvider">A function that can load an assembly with the given name.</param>
         /// <param name="progress">Reports warnings and errors in code generation.</param>
         /// <param name="cancellationToken"></param>
         /// <param name="inputDocument">The document to scan for generator attributes.</param>
         /// <returns>A task whose result is the generated document.</returns>
-        public static async Task<SyntaxTree> TransformAsync(CSharpCompilation compilation,
+        public static async Task<SyntaxTree?> TransformAsync(CSharpCompilation compilation,
             Document document,
             string projectDirectory,
-            Func<AssemblyName, Assembly> assemblyLoader,
+            GeneratorPluginProvider generatorPluginProvider,
             IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
             
@@ -75,14 +74,13 @@ namespace SmartCodeGenerator
                     continue;
                 }
                 
-                //TODO: Add caching for found generators
-                var generators = GeneratorFinder.FindCodeGenerators(attributeData, assemblyLoader).ToList();
+                var generators = generatorPluginProvider.FindCodeGenerators(attributeData).ToList();
                 var context = new TransformationContext(memberNode, inputSemanticModel, compilation, projectDirectory, emittedUsings, emittedExterns, syntaxGenerator);
-                foreach (var generator in generators)
+                foreach (var (attribute, generator) in generators)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var emitted = await generator.GenerateAsync(context, progress, cancellationToken);
+                    var emitted = await generator.GenerateAsync(attribute, context, progress, cancellationToken);
                     emittedExterns.AddRange(emitted.Externs);
                     emittedUsings.AddRange(emitted.Usings);
                     emittedAttributeLists.AddRange(emitted.AttributeLists);
@@ -93,10 +91,15 @@ namespace SmartCodeGenerator
             return await GenerateSyntaxTree(emittedExterns, emittedUsings, emittedAttributeLists, emittedMembers, document);
         }
 
-        private static async Task<SyntaxTree> GenerateSyntaxTree(List<ExternAliasDirectiveSyntax> emittedExterns,
+        private static async Task<SyntaxTree?> GenerateSyntaxTree(List<ExternAliasDirectiveSyntax> emittedExterns,
             List<UsingDirectiveSyntax> emittedUsings, List<AttributeListSyntax> emittedAttributeLists,
             List<MemberDeclarationSyntax> emittedMembers, Document document)
         {
+            if (emittedMembers.Count == 0 && emittedAttributeLists.Count == 0)
+            {
+                return null;
+            }
+
             var compilationUnit =
                 SyntaxFactory.CompilationUnit(
                         SyntaxFactory.List(emittedExterns),

@@ -2,15 +2,12 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-using SmartCodeGenerator.Contracts;
-using SmartCodeGenerator.PluginArchitectureDemo;
 
 namespace SmartCodeGenerator
 {
@@ -22,8 +19,6 @@ namespace SmartCodeGenerator
     {
         private const string InputAssembliesIntermediateOutputFileName = "CodeGeneration.Roslyn.InputAssemblies.txt";
         private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
-        //private readonly List<string> emptyGeneratedFiles = new List<string>();
-        //private readonly List<string> generatedFiles = new List<string>();
         private readonly List<string> loadedAssemblies = new List<string>();
 
         public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory, string projectDirectory)
@@ -55,9 +50,9 @@ namespace SmartCodeGenerator
         /// <param name="project"></param>
         /// <param name="progress">Optional handler of diagnostics provided by code generator.</param>
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
-        public async Task Generate(Project project, IProgress<Diagnostic> progress,
-            CancellationToken cancellationToken = default)
+        public async Task Generate(Project project, IProgress<Diagnostic> progress, CancellationToken cancellationToken = default)
         {
+            var generatorProvider = new GeneratorPluginProvider(this.GeneratorAssemblySearchPaths);
             var compilation = await project.GetCompilationAsync(cancellationToken) as CSharpCompilation;
             if (compilation == null)
             {
@@ -68,9 +63,6 @@ namespace SmartCodeGenerator
 
             // For incremental build, we want to consider the input->output files as well as the assemblies involved in code generation.
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
-
-            var fileFailures = new List<Exception>();
-
             using (var hasher = System.Security.Cryptography.SHA1.Create())
             {
                 foreach (var document in project.Documents)
@@ -87,48 +79,51 @@ namespace SmartCodeGenerator
                     DateTime outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
                     if (File.GetLastWriteTime(documentFilePath) > outputLastModified || assembliesLastModified > outputLastModified)
                     {
-                        int retriesLeft = 3;
-                        do
+                        var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, this.ProjectDirectory, generatorProvider, progress, cancellationToken);
+                        if (generatedSyntaxTree == null)
                         {
-                            try
-                            {
-                                var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, this.ProjectDirectory, this.LoadAssembly, progress, cancellationToken);
-
-                                var outputText = generatedSyntaxTree.GetText(cancellationToken);
-                                await using (var outputFileStream = File.OpenWrite(outputFilePath))
-                                await using (var outputWriter = new StreamWriter(outputFileStream))
-                                {
-                                    outputText.Write(outputWriter, cancellationToken);
-
-                                    // Truncate any data that may be beyond this point if the file existed previously.
-                                    outputWriter.Flush();
-                                    outputFileStream.SetLength(outputFileStream.Position);
-                                }
-                                break;
-                            }
-                            catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
-                            {
-                                retriesLeft--;
-                                await Task.Delay(200, cancellationToken);
-                            }
-                            catch (Exception ex)
-                            {
-                                ReportError(progress, "CGR001", document, ex);
-                                fileFailures.Add(ex);
-                                break;
-                            }
+                            continue;
                         }
-                        while (true);
+                        var outputText = generatedSyntaxTree.GetText(cancellationToken);
+                        await TrySaveOutputText(outputFilePath, outputText, document, progress, cancellationToken);
                     }
                 }
             }
 
             this.SaveGeneratorAssemblyList(generatorAssemblyInputsFile);
+        }
 
-            if (fileFailures.Count > 0)
+        private static async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document,
+            IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        {
+            int retriesLeft = 3;
+            do
             {
-                throw new AggregateException(fileFailures);
-            }
+                try
+                {
+                    await using (var outputFileStream = File.OpenWrite(outputFilePath))
+                    await using (var outputWriter = new StreamWriter(outputFileStream))
+                    {
+                        outputText.Write(outputWriter, cancellationToken);
+
+                        // Truncate any data that may be beyond this point if the file existed previously.
+                        outputWriter.Flush();
+                        outputFileStream.SetLength(outputFileStream.Position);
+                    }
+
+                    break;
+                }
+                catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
+                {
+                    retriesLeft--;
+                    await Task.Delay(200, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    ReportError(progress, "CGR001", document, ex);
+                    break;
+                }
+            } while (true);
         }
 
         private static DateTime GetLastModifiedAssemblyTime(string assemblyListPath)
@@ -174,13 +169,6 @@ namespace SmartCodeGenerator
             var reportDiagnostic = Diagnostic.Create(descriptor, location, messageArgs);
 
             progress.Report(reportDiagnostic);
-        }
-
-        private Assembly LoadAssembly(AssemblyName assemblyName)
-        {
-            var pluginPath = this.GeneratorAssemblySearchPaths.First();
-            var generatorLoadContext = new GeneratorLoadContext(pluginPath, typeof(ICodeGenerator).Assembly);
-            return generatorLoadContext.LoadFromAssemblyName(assemblyName);
         }
 
         private void SaveGeneratorAssemblyList(string assemblyListPath)

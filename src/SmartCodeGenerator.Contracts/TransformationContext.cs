@@ -1,8 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Editing;
 
 namespace SmartCodeGenerator.Contracts
 {
@@ -14,33 +12,19 @@ namespace SmartCodeGenerator.Contracts
         /// <summary>
         ///     Initializes a new instance of the <see cref="TransformationContext" /> class.
         /// </summary>
-        /// <param name="processingNode">The syntax node the generator attribute is found on.</param>
+        /// <param name="document"></param>
         /// <param name="semanticModel">The semantic model.</param>
         /// <param name="compilation">The overall compilation being generated for.</param>
-        /// <param name="projectDirectory">The absolute path of the directory where the project file is located.</param>
-        /// <param name="compilationUnitUsings">The using directives already queued to be generated.</param>
-        /// <param name="compilationUnitExterns">The extern aliases already queued to be generated.</param>
-        /// <param name="syntaxGenerator"></param>
-        public TransformationContext(CSharpSyntaxNode processingNode,
-            SemanticModel semanticModel,
+        /// <param name="progress"></param>
+        public TransformationContext(Document document, SemanticModel semanticModel,
             CSharpCompilation compilation,
-            string projectDirectory,
-            IReadOnlyList<UsingDirectiveSyntax> compilationUnitUsings,
-            IReadOnlyList<ExternAliasDirectiveSyntax> compilationUnitExterns, SyntaxGenerator syntaxGenerator)
+            IProgress<Diagnostic> progress)
         {
-            ProcessingNode = processingNode;
             SemanticModel = semanticModel;
             Compilation = compilation;
-            ProjectDirectory = projectDirectory;
-            CompilationUnitUsings = compilationUnitUsings;
-            CompilationUnitExterns = compilationUnitExterns;
-            SyntaxGenerator = syntaxGenerator;
+            Progress = progress;
+            Document = document;
         }
-
-        /// <summary>
-        /// Gets the syntax node the generator attribute is found on.
-        /// </summary>
-        public CSharpSyntaxNode ProcessingNode { get; }
 
         /// <summary>
         /// Gets the semantic model for the <see cref="Compilation" />.
@@ -52,21 +36,7 @@ namespace SmartCodeGenerator.Contracts
         /// </summary>
         public CSharpCompilation Compilation { get; }
 
-        /// <summary>
-        /// Gets the absolute path of the directory where the project file is located.
-        /// </summary>
-        public string ProjectDirectory { get; }
-
-        /// <summary>
-        /// Gets a collection of using directives already queued to be generated.
-        /// </summary>
-        public IReadOnlyList<UsingDirectiveSyntax> CompilationUnitUsings { get; }
-
-        /// <summary>
-        /// Gets a collection of extern aliases already queued to be generated.
-        /// </summary>
-        public IReadOnlyList<ExternAliasDirectiveSyntax> CompilationUnitExterns { get; }
-
-        public SyntaxGenerator SyntaxGenerator { get; }
+        public IProgress<Diagnostic> Progress { get; }
+        public Document Document { get; }
     }
 }

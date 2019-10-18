@@ -17,18 +17,12 @@ namespace SmartCodeGenerator.Contracts
         /// <param name="progress">A way to report diagnostic messages.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The generated member syntax to be added to the project.</returns>
-        protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateMembersAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
-
-        public abstract bool AcceptsMembersMarkWith(AttributeData attributeData);
-
-        public async Task<GenerationResult> GenerateAsync(AttributeData markerAttribute, TransformationContext context,
-            IProgress<Diagnostic> progress,
-            CancellationToken cancellationToken)
+        protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateMembersAsync(CSharpSyntaxNode memberNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken);
+        
+        public async Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken)
         {
-            var generatedMembers = await GenerateMembersAsync(context, progress, CancellationToken.None);
-
-            // Figure out ancestry for the generated type, including nesting types and namespaces.
-            var wrappedMembers = context.ProcessingNode.Ancestors().Aggregate(generatedMembers, WrapInAncestor);
+            var generatedMembers = await GenerateMembersAsync(processedNode, markerAttribute, context, cancellationToken);
+            var wrappedMembers = processedNode.Ancestors().Aggregate(generatedMembers, WrapInAncestor);
             return new GenerationResult { Members = wrappedMembers };
         }
 

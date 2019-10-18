@@ -38,7 +38,7 @@ namespace SmartCodeGenerator
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, new ConsoleProgressReporter());
 
                 var projectDirectory = Path.GetDirectoryName(options.ProjectPath)?? string.Empty;
-                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath, projectDirectory);
+                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath);
                 await generator.Generate(project, new Progress<Diagnostic>(diagnostic =>
                 {
                     

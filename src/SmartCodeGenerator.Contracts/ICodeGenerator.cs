@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace SmartCodeGenerator.Contracts
 {
@@ -11,14 +12,6 @@ namespace SmartCodeGenerator.Contracts
     /// </summary>
     public interface ICodeGenerator
     {
-        /// <summary>
-        /// Create additions to compilation unit representing the expansion of some node to which this attribute is applied.
-        /// </summary>
-        /// <param name="markerAttribute"></param>
-        /// <param name="context">All the inputs necessary to perform the code generation.</param>
-        /// <param name="progress">A way to report diagnostic messages.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>The generated syntax nodes to be added to the compilation unit added to the project.</returns>
-        Task<GenerationResult> GenerateAsync(AttributeData markerAttribute, TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken);
+        Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken);
     }
 }

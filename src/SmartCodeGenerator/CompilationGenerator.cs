@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,36 +14,31 @@ namespace SmartCodeGenerator
 {
     /// <summary>
     /// Runs code generation for every applicable document and handles resulting syntax trees,
-    /// saving them to <see cref="IntermediateOutputDirectory"/>.
+    /// saving them to <see cref="_intermediateOutputDirectory"/>.
     /// </summary>
     public class CompilationGenerator
     {
         private const string InputAssembliesIntermediateOutputFileName = "CodeGeneration.Roslyn.InputAssemblies.txt";
         private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
+        //TODO: Find original purpose
         private readonly List<string> loadedAssemblies = new List<string>();
+        
+        private readonly string _intermediateOutputDirectory;
+        private readonly IReadOnlyList<string> _generatorAssemblySearchPaths;
 
-        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory, string projectDirectory)
+        private static readonly DiagnosticDescriptor Descriptor = new DiagnosticDescriptor(
+            "CGR001",
+            "Error during transformation",
+            "{0}",
+            "CodeGen.Roslyn: Transformation",
+            DiagnosticSeverity.Error,
+            true);
+
+        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory)
         {
-            GeneratorAssemblySearchPaths = generatorAssemblySearchPaths;
-            IntermediateOutputDirectory = intermediateOutputDirectory;
-            ProjectDirectory = projectDirectory;
+            _generatorAssemblySearchPaths = generatorAssemblySearchPaths;
+            _intermediateOutputDirectory = intermediateOutputDirectory;
         }
-
-        /// <summary>
-        /// Gets or sets the paths to directories to search for generator assemblies.
-        /// </summary>
-        public IReadOnlyList<string> GeneratorAssemblySearchPaths { get; }
-
-        /// <summary>
-        /// Gets or sets the path to the directory that contains generated source files.
-        /// </summary>
-        public string IntermediateOutputDirectory { get; }
-
-        /// <summary>
-        /// Gets or sets the directory with the project file.
-        /// </summary>
-        public string ProjectDirectory { get; }
-
 
         /// <summary>
         /// Runs the code generation as configured using this instance's properties.
@@ -52,34 +48,24 @@ namespace SmartCodeGenerator
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
         public async Task Generate(Project project, IProgress<Diagnostic> progress, CancellationToken cancellationToken = default)
         {
-            var generatorProvider = new GeneratorPluginProvider(this.GeneratorAssemblySearchPaths);
+            var generatorProvider = new GeneratorPluginProvider(this._generatorAssemblySearchPaths);
             var compilation = await project.GetCompilationAsync(cancellationToken) as CSharpCompilation;
             if (compilation == null)
             {
                 return;
             }
 
-            string generatorAssemblyInputsFile = Path.Combine(this.IntermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
-
-            // For incremental build, we want to consider the input->output files as well as the assemblies involved in code generation.
+            var generatorAssemblyInputsFile = Path.Combine(this._intermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
-            using (var hasher = System.Security.Cryptography.SHA1.Create())
+            using (var hasher = SHA1.Create())
             {
                 foreach (var document in project.Documents)
                 {
-                    
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    var documentFilePath = document.FilePath;
-                    string sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(documentFilePath)), 0, 6).Replace('/', '-');
-                    string outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(documentFilePath) + $".{sourceHash}.generated.cs");
-
-                    // Code generation is relatively fast, but it's not free.
-                    // So skip files that haven't changed since we last generated them.
-                    DateTime outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-                    if (File.GetLastWriteTime(documentFilePath) > outputLastModified || assembliesLastModified > outputLastModified)
+                    var outputFilePath = GenerateOutputFilePath(hasher, document.FilePath);
+                    if (File.Exists(outputFilePath) == false || ShouldRegenerateFile(outputFilePath, document, assembliesLastModified))
                     {
-                        var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, this.ProjectDirectory, generatorProvider, progress, cancellationToken);
+                        var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, generatorProvider, progress, cancellationToken);
                         if (generatedSyntaxTree == null)
                         {
                             continue;
@@ -93,22 +79,30 @@ namespace SmartCodeGenerator
             this.SaveGeneratorAssemblyList(generatorAssemblyInputsFile);
         }
 
-        private static async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document,
-            IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private static bool ShouldRegenerateFile(string outputFilePath, Document document, DateTime assembliesLastModified)
+        {
+            var outputLastModified =  File.GetLastWriteTime(outputFilePath);
+            return File.GetLastWriteTime(document.FilePath) > outputLastModified || assembliesLastModified > outputLastModified;
+        }
+
+        private string GenerateOutputFilePath(SHA1 hasher, string inputDocumentFilePath)
+        {
+            var sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputDocumentFilePath)), 0, 6)
+                .Replace('/', '-');
+            return Path.Combine(this._intermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputDocumentFilePath) + $".{sourceHash}.generated.cs");
+        }
+
+        private static async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
             int retriesLeft = 3;
             do
             {
                 try
                 {
-                    await using (var outputFileStream = File.OpenWrite(outputFilePath))
+                    await using (var outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
                     await using (var outputWriter = new StreamWriter(outputFileStream))
                     {
                         outputText.Write(outputWriter, cancellationToken);
-
-                        // Truncate any data that may be beyond this point if the file existed previously.
-                        outputWriter.Flush();
-                        outputFileStream.SetLength(outputFileStream.Position);
                     }
 
                     break;
@@ -120,7 +114,7 @@ namespace SmartCodeGenerator
                 }
                 catch (Exception ex)
                 {
-                    ReportError(progress, "CGR001", document, ex);
+                    ReportError(progress, document, ex);
                     break;
                 }
             } while (true);
@@ -139,35 +133,10 @@ namespace SmartCodeGenerator
             return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
         }
 
-        private static void ReportError(IProgress<Diagnostic> progress, string id, Document inputSyntaxTree, Exception ex)
+        private static void ReportError(IProgress<Diagnostic> progress, Document inputDocument, Exception ex)
         {
-            Console.Error.WriteLine($"Exception in file processing: {ex}");
-
-            if (progress == null)
-            {
-                return;
-            }
-
-            const string category = "CodeGen.Roslyn: Transformation";
-            const string messageFormat = "{0}";
-
-            var descriptor = new DiagnosticDescriptor(
-                id,
-                "Error during transformation",
-                messageFormat,
-                category,
-                DiagnosticSeverity.Error,
-                true);
-
-            var location = inputSyntaxTree != null ? Location.Create(inputSyntaxTree.FilePath, TextSpan.FromBounds(0, 0), new LinePositionSpan(LinePosition.Zero, LinePosition.Zero)) : Location.None;
-
-            var messageArgs = new object[]
-            {
-                ex,
-            };
-
-            var reportDiagnostic = Diagnostic.Create(descriptor, location, messageArgs);
-
+            var location = Location.Create(inputDocument.FilePath, TextSpan.FromBounds(0, 0), new LinePositionSpan(LinePosition.Zero, LinePosition.Zero));
+            var reportDiagnostic = Diagnostic.Create(Descriptor, location, ex);
             progress.Report(reportDiagnostic);
         }
 

@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using SmartCodeGenerator.Contracts;
 using SmartCodeGenerator.PluginArchitectureDemo;
 
@@ -40,7 +41,7 @@ namespace SmartCodeGenerator
             return generator?.Value;
         }
 
-        public IEnumerable<(AttributeData, ICodeGenerator)> FindCodeGenerators(ImmutableArray<AttributeData> nodeAttributes)
+        public IEnumerable<(AttributeData, ICodeGenerator)> FindCodeGenerators(IReadOnlyCollection<AttributeData> nodeAttributes)
         {
             foreach (var attributeData in nodeAttributes)
             {
@@ -55,7 +56,8 @@ namespace SmartCodeGenerator
         class EmptyGenerator:ICodeGenerator
         {
 
-            public Task<GenerationResult> GenerateAsync(AttributeData markerAttribute, TransformationContext context, IProgress<Diagnostic> progress,
+            public Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute,
+                TransformationContext context,
                 CancellationToken cancellationToken)
             {
                 throw new NotImplementedException();

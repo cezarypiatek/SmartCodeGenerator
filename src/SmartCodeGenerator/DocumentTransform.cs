@@ -49,12 +49,11 @@ namespace SmartCodeGenerator
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var emitted = await generator.GenerateAsync(memberNode, markerAttribute, context, cancellationToken);
-                    generatedDocument.Append(emitted);
+                    generatedDocument.Append(emitted, generator);
                 }
             }
             return await generatedDocument.GenerateSyntaxTree();
         }
-
 
         private static IEnumerable<CSharpSyntaxNode> GetMemberDeclarations(SyntaxTree inputSyntaxTree)
         {

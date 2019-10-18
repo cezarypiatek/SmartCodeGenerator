@@ -14,6 +14,11 @@ namespace SmartCodeGenerator
         static async Task<int> Main(string[] args)
         {
 
+            AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
+            {
+                Console.WriteLine(((Exception) eventArgs.ExceptionObject).ToString());
+            };
+
             var instance = MSBuildLocator.QueryVisualStudioInstances(new VisualStudioInstanceQueryOptions()
             {
                 DiscoveryTypes = DiscoveryType.DotNetSdk | DiscoveryType.DeveloperConsole | DiscoveryType.VisualStudioSetup
@@ -37,7 +42,6 @@ namespace SmartCodeGenerator
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, new ConsoleProgressReporter());
 
-                var projectDirectory = Path.GetDirectoryName(options.ProjectPath)?? string.Empty;
                 var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath);
                 await generator.Generate(project, new Progress<Diagnostic>(diagnostic =>
                 {

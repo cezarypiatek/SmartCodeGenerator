@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -57,27 +58,42 @@ namespace SmartCodeGenerator
 
             var generatorAssemblyInputsFile = Path.Combine(this._intermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
-            using (var hasher = SHA1.Create())
+            await ProcessInParallel(project.Documents, async document =>
             {
-                foreach (var document in project.Documents)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var outputFilePath = GenerateOutputFilePath(hasher, document.FilePath);
-                    if (File.Exists(outputFilePath) == false || ShouldRegenerateFile(outputFilePath, document, assembliesLastModified))
-                    {
-                        var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, generatorProvider, progress, cancellationToken);
-                        if (generatedSyntaxTree == null)
-                        {
-                            continue;
-                        }
-                        var outputText = generatedSyntaxTree.GetText(cancellationToken);
-                        await TrySaveOutputText(outputFilePath, outputText, document, progress, cancellationToken);
-                    }
-                }
-            }
-
+                await ProcessDocument(document, assembliesLastModified, compilation, generatorProvider, progress, cancellationToken);
+            });
+            
             this.SaveGeneratorAssemblyList(generatorAssemblyInputsFile);
         }
+
+        private async Task ProcessInParallel<T>(IEnumerable<T> elements, Func<T, Task> function)
+        {
+            var allJObs = Partitioner.Create(elements).GetPartitions(Environment.ProcessorCount).Select(async partition =>
+            {
+                while (partition.MoveNext())
+                {
+                    await function(partition.Current);
+                }
+            });
+            await Task.WhenAll(allJObs);
+        }
+
+        private async Task ProcessDocument(Document document, DateTime assembliesLastModified, CSharpCompilation compilation, GeneratorPluginProvider generatorProvider, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var outputFilePath = GenerateOutputFilePath(_hasher.Value ?? SHA1.Create(), document.FilePath);
+            if (File.Exists(outputFilePath) == false || ShouldRegenerateFile(outputFilePath, document, assembliesLastModified))
+            {
+                var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, generatorProvider, progress, cancellationToken);
+                if (generatedSyntaxTree != null)
+                {
+                    var outputText = generatedSyntaxTree.GetText(cancellationToken);
+                    await TrySaveOutputText(outputFilePath, outputText, document, progress, cancellationToken);
+                }
+            }
+        }
+
+        private readonly ThreadLocal<SHA1> _hasher = new ThreadLocal<SHA1>(SHA1.Create);
 
         private static bool ShouldRegenerateFile(string outputFilePath, Document document, DateTime assembliesLastModified)
         {

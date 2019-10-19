@@ -41,14 +41,14 @@ namespace SmartCodeGenerator
             {
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, new ConsoleProgressReporter());
-
-                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath);
-                await generator.Generate(project, new Progress<Diagnostic>(diagnostic =>
+                var progressReporter = new Progress<Diagnostic>(diagnostic =>
                 {
                     
-                }));
+                });
+                var errorReporter = new ErrorReporter(progressReporter);
+                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath, errorReporter, progressReporter);
+                await generator.Process(project);
             }
-
             return 0;
         }
 

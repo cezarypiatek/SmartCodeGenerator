@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -14,7 +13,7 @@ namespace SmartCodeGenerator
 {
     public class GeneratorPluginProvider
     {
-        private IReadOnlyDictionary<string,Lazy<ICodeGenerator>> _generators;
+        private readonly IReadOnlyDictionary<string,Lazy<ICodeGenerator>> _generators;
 
         public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths)
         {
@@ -26,7 +25,7 @@ namespace SmartCodeGenerator
                 return pluginAssembly.GetTypes().Where(t => generatorInterfaceType.IsAssignableFrom(t))
                     .Select(type =>
                     {
-                        var generatorAttribute = (GeneratorAttribute?) type.GetCustomAttribute(typeof(GeneratorAttribute));
+                        var generatorAttribute = (CodeGeneratorAttribute?) type.GetCustomAttribute(typeof(CodeGeneratorAttribute));
                         var key = generatorAttribute?.ProcessMarkedWith.FullName ?? Guid.NewGuid().ToString();
                         var generator = new Lazy<ICodeGenerator>(() => (ICodeGenerator?) Activator.CreateInstance(type) ?? new EmptyGenerator());
                         return new {key, generator};
@@ -55,12 +54,9 @@ namespace SmartCodeGenerator
 
         class EmptyGenerator:ICodeGenerator
         {
-
-            public Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute,
-                TransformationContext context,
-                CancellationToken cancellationToken)
+            public Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken)
             {
-                throw new NotImplementedException();
+                return Task.FromResult(new GenerationResult());
             }
         }
     }

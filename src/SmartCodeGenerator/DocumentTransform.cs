@@ -13,28 +13,42 @@ namespace SmartCodeGenerator
     /// <summary>
     /// The class responsible for generating compilation units to add to the project being built.
     /// </summary>
-    public static class DocumentTransform
+    public class DocumentTransformer
     {
-        /// <summary>
-        /// Produces a new document in response to any code generation attributes found in the specified document.
-        /// </summary>
-        /// <param name="compilation">The compilation to which the document belongs.</param>
-        /// <param name="document"></param>
-        /// <param name="generatorPluginProvider">A function that can load an assembly with the given name.</param>
-        /// <param name="progress">Reports warnings and errors in code generation.</param>
-        /// <param name="cancellationToken"></param>
-        /// <param name="inputDocument">The document to scan for generator attributes.</param>
-        /// <returns>A task whose result is the generated document.</returns>
-        public static async Task<SyntaxTree?> TransformAsync(CSharpCompilation compilation,
-            Document document,
-            GeneratorPluginProvider generatorPluginProvider,
-            IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private readonly GeneratorPluginProvider _generatorPluginProvider;
+        private readonly IErrorReporter _errorReporter;
+        private readonly IProgress<Diagnostic> _progress;
+
+        public DocumentTransformer(GeneratorPluginProvider generatorPluginProvider,
+            IErrorReporter errorReporter,
+            IProgress<Diagnostic> progress)
+        {
+            _generatorPluginProvider = generatorPluginProvider;
+            _errorReporter = errorReporter;
+            _progress = progress;
+        }
+
+        public async Task<SyntaxTree?> TransformAsync(CSharpCompilation compilation, Document document, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var generatedDocument = await GenerateDocumentFrom(compilation, document, cancellationToken);
+                return await generatedDocument.GenerateSyntaxTree();
+            }
+            catch (Exception exception)
+            {
+                _errorReporter.ReportError(document, exception);
+                return null;
+            }
+        }
+
+        private  async Task<GeneratedDocument> GenerateDocumentFrom(CSharpCompilation compilation, Document document, CancellationToken cancellationToken)
         {
             var inputSyntaxTree = await document.GetSyntaxTreeAsync(cancellationToken);
             var inputSemanticModel = await document.GetSemanticModelAsync(cancellationToken);
             var inputCompilationUnit = inputSyntaxTree.GetCompilationUnitRoot();
             var generatedDocument = new GeneratedDocument(inputCompilationUnit, document);
-            var context = new TransformationContext(document, inputSemanticModel, compilation, progress);
+            var context = new TransformationContext(document, inputSemanticModel, compilation, _progress);
             var assemblyAttributes = compilation.Assembly.GetAttributes();
 
             foreach (var memberNode in GetMemberDeclarations(inputSyntaxTree))
@@ -45,14 +59,22 @@ namespace SmartCodeGenerator
                     continue;
                 }
 
-                foreach (var (markerAttribute, generator) in generatorPluginProvider.FindCodeGenerators(attributeData))
+                foreach (var (markerAttribute, generator) in _generatorPluginProvider.FindCodeGenerators(attributeData))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var emitted = await generator.GenerateAsync(memberNode, markerAttribute, context, cancellationToken);
-                    generatedDocument.Append(emitted, generator);
+                    try
+                    {
+                        var emitted = await generator.GenerateAsync(memberNode, markerAttribute, context, cancellationToken);
+                        generatedDocument.Append(emitted, generator);
+                    }
+                    catch (Exception exception)
+                    {
+                        _errorReporter.ReportError(document, exception);
+                    }
                 }
             }
-            return await generatedDocument.GenerateSyntaxTree();
+
+            return generatedDocument;
         }
 
         private static IEnumerable<CSharpSyntaxNode> GetMemberDeclarations(SyntaxTree inputSyntaxTree)

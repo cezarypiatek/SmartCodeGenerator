@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,31 +24,30 @@ namespace SmartCodeGenerator
         private readonly List<string> loadedAssemblies = new List<string>();
         
         private readonly string _intermediateOutputDirectory;
+        private readonly IErrorReporter _errorReporter;
+        private readonly IProgress<Diagnostic> _progress;
+        private readonly DocumentTransformer _documentTransformer;
         private readonly IReadOnlyList<string> _generatorAssemblySearchPaths;
 
-        private static readonly DiagnosticDescriptor Descriptor = new DiagnosticDescriptor(
-            "CGR001",
-            "Error during transformation",
-            "{0}",
-            "CodeGen.Roslyn: Transformation",
-            DiagnosticSeverity.Error,
-            true);
+      
 
-        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory)
+        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory, IErrorReporter errorReporter, IProgress<Diagnostic> progress)
         {
+            var generatorPluginProvider = new GeneratorPluginProvider(this._generatorAssemblySearchPaths);
             _generatorAssemblySearchPaths = generatorAssemblySearchPaths;
             _intermediateOutputDirectory = intermediateOutputDirectory;
+            _errorReporter = errorReporter;
+            _progress = progress;
+            _documentTransformer = new DocumentTransformer(generatorPluginProvider, errorReporter, progress);
         }
 
         /// <summary>
         /// Runs the code generation as configured using this instance's properties.
         /// </summary>
         /// <param name="project"></param>
-        /// <param name="progress">Optional handler of diagnostics provided by code generator.</param>
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
-        public async Task Generate(Project project, IProgress<Diagnostic> progress, CancellationToken cancellationToken = default)
+        public async Task Process(Project project, CancellationToken cancellationToken = default)
         {
-            var generatorProvider = new GeneratorPluginProvider(this._generatorAssemblySearchPaths);
             var compilation = await project.GetCompilationAsync(cancellationToken) as CSharpCompilation;
             if (compilation == null)
             {
@@ -58,37 +56,25 @@ namespace SmartCodeGenerator
 
             var generatorAssemblyInputsFile = Path.Combine(this._intermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
-            await ProcessInParallel(project.Documents, async document =>
+            await project.Documents.ProcessInParallelAsync(async document =>
             {
-                await ProcessDocument(document, assembliesLastModified, compilation, generatorProvider, progress, cancellationToken);
+                await ProcessDocument(document, assembliesLastModified, compilation, cancellationToken);
             });
             
             this.SaveGeneratorAssemblyList(generatorAssemblyInputsFile);
         }
 
-        private async Task ProcessInParallel<T>(IEnumerable<T> elements, Func<T, Task> function)
-        {
-            var allJObs = Partitioner.Create(elements).GetPartitions(Environment.ProcessorCount).Select(async partition =>
-            {
-                while (partition.MoveNext())
-                {
-                    await function(partition.Current);
-                }
-            });
-            await Task.WhenAll(allJObs);
-        }
-
-        private async Task ProcessDocument(Document document, DateTime assembliesLastModified, CSharpCompilation compilation, GeneratorPluginProvider generatorProvider, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private async Task ProcessDocument(Document document, DateTime assembliesLastModified, CSharpCompilation compilation, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var outputFilePath = GenerateOutputFilePath(_hasher.Value ?? SHA1.Create(), document.FilePath);
             if (File.Exists(outputFilePath) == false || ShouldRegenerateFile(outputFilePath, document, assembliesLastModified))
             {
-                var generatedSyntaxTree = await DocumentTransform.TransformAsync(compilation, document, generatorProvider, progress, cancellationToken);
+                var generatedSyntaxTree = await _documentTransformer.TransformAsync(compilation, document, cancellationToken);
                 if (generatedSyntaxTree != null)
                 {
                     var outputText = generatedSyntaxTree.GetText(cancellationToken);
-                    await TrySaveOutputText(outputFilePath, outputText, document, progress, cancellationToken);
+                    await TrySaveOutputText(outputFilePath, outputText, document, cancellationToken);
                 }
             }
         }
@@ -108,7 +94,7 @@ namespace SmartCodeGenerator
             return Path.Combine(this._intermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputDocumentFilePath) + $".{sourceHash}.generated.cs");
         }
 
-        private static async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private  async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document, CancellationToken cancellationToken)
         {
             int retriesLeft = 3;
             do
@@ -130,7 +116,7 @@ namespace SmartCodeGenerator
                 }
                 catch (Exception ex)
                 {
-                    ReportError(progress, document, ex);
+                    _errorReporter.ReportError(document, ex);
                     break;
                 }
             } while (true);
@@ -147,13 +133,6 @@ namespace SmartCodeGenerator
                 .Where(File.Exists)
                 .Select(File.GetLastWriteTime)).ToList();
             return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
-        }
-
-        private static void ReportError(IProgress<Diagnostic> progress, Document inputDocument, Exception ex)
-        {
-            var location = Location.Create(inputDocument.FilePath, TextSpan.FromBounds(0, 0), new LinePositionSpan(LinePosition.Zero, LinePosition.Zero));
-            var reportDiagnostic = Diagnostic.Create(Descriptor, location, ex);
-            progress.Report(reportDiagnostic);
         }
 
         private void SaveGeneratorAssemblyList(string assemblyListPath)

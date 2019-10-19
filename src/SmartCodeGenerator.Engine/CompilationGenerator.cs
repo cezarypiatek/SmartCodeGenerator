@@ -80,12 +80,10 @@ namespace SmartCodeGenerator.Engine
             {
                 try
                 {
-                    await using (var outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
-                    await using (var outputWriter = new StreamWriter(outputFileStream))
-                    {
-                        outputText.Write(outputWriter, cancellationToken);
-                    }
+                    await using var outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+                    await using var outputWriter = new StreamWriter(outputFileStream);
 
+                    outputText.Write(outputWriter, cancellationToken);
                     break;
                 }
                 catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)

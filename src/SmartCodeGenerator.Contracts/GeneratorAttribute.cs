@@ -5,9 +5,11 @@ namespace SmartCodeGenerator.Contracts
     [AttributeUsage(AttributeTargets.Class)]
     public class GeneratorAttribute:Attribute
     {
-        public Type ProcessMarkedWith { get; set; }
-        public GeneratorAttribute()
+        public Type ProcessMarkedWith { get; }
+
+        public GeneratorAttribute(Type processMarkedWith)
         {
+            ProcessMarkedWith = processMarkedWith;
         }
     }
 }

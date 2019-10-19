@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -10,13 +9,6 @@ namespace SmartCodeGenerator.Contracts
 {
     public abstract class EnrichingCodeGeneratorProxy : ICodeGenerator
     {
-        /// <summary>
-        /// Create the syntax tree representing the expansion of some member to which this attribute is applied.
-        /// </summary>
-        /// <param name="context">All the inputs necessary to perform the code generation.</param>
-        /// <param name="progress">A way to report diagnostic messages.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>The generated member syntax to be added to the project.</returns>
         protected abstract Task<SyntaxList<MemberDeclarationSyntax>> GenerateMembersAsync(CSharpSyntaxNode memberNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken);
         
         public async Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken)

@@ -35,18 +35,13 @@ namespace SmartCodeGenerator
                 return -1;
             }
 
-
+            var progressReporter = new ProgressReporter();
             MSBuildLocator.RegisterInstance(instance.FirstOrDefault());
             using (var workspace = MSBuildWorkspace.Create())
             {
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
-                var project = await workspace.OpenProjectAsync(options.ProjectPath, new ConsoleProgressReporter());
-                var progressReporter = new Progress<Diagnostic>(diagnostic =>
-                {
-                    
-                });
-                var errorReporter = new ErrorReporter(progressReporter);
-                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath, errorReporter, progressReporter);
+                var project = await workspace.OpenProjectAsync(options.ProjectPath, progressReporter);
+                var generator = new CompilationGenerator(new []{options.GeneratorPath}, options.OutputPath, progressReporter);
                 await generator.Process(project);
             }
             return 0;
@@ -62,20 +57,6 @@ namespace SmartCodeGenerator
                     //TODO: Display help
                 });
             return result;
-        }
-
-        private class ConsoleProgressReporter : IProgress<ProjectLoadProgress>
-        {
-            public void Report(ProjectLoadProgress loadProgress)
-            {
-                var projectDisplay = Path.GetFileName(loadProgress.FilePath);
-                if (loadProgress.TargetFramework != null)
-                {
-                    projectDisplay += $" ({loadProgress.TargetFramework})";
-                }
-
-                Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
-            }
         }
     }
 }

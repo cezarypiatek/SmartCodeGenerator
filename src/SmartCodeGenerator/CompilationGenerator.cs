@@ -19,17 +19,18 @@ namespace SmartCodeGenerator
     {
         private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
         private readonly string _intermediateOutputDirectory;
-        private readonly IErrorReporter _errorReporter;
+        private readonly IProgressReporter _progressReporter;
         private readonly DocumentTransformer _documentTransformer;
         private readonly IReadOnlyList<string> _generatorAssemblySearchPaths;
 
-        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths, string intermediateOutputDirectory, IErrorReporter errorReporter, IProgress<Diagnostic> progress)
+        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths,
+            string intermediateOutputDirectory, ProgressReporter progressReporter)
         {
             var generatorPluginProvider = new GeneratorPluginProvider(this._generatorAssemblySearchPaths);
             _generatorAssemblySearchPaths = generatorAssemblySearchPaths;
             _intermediateOutputDirectory = intermediateOutputDirectory;
-            _errorReporter = errorReporter;
-            _documentTransformer = new DocumentTransformer(generatorPluginProvider, errorReporter, progress);
+            _progressReporter = progressReporter;
+            _documentTransformer = new DocumentTransformer(generatorPluginProvider, progressReporter);
         }
 
         /// <summary>
@@ -94,7 +95,7 @@ namespace SmartCodeGenerator
                 }
                 catch (Exception ex)
                 {
-                    _errorReporter.ReportError(document, ex);
+                    _progressReporter.ReportError(document, ex);
                     break;
                 }
             } while (true);

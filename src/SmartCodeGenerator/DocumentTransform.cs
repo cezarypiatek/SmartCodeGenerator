@@ -10,22 +10,15 @@ using SmartCodeGenerator.Contracts;
 
 namespace SmartCodeGenerator
 {
-    /// <summary>
-    /// The class responsible for generating compilation units to add to the project being built.
-    /// </summary>
     public class DocumentTransformer
     {
         private readonly GeneratorPluginProvider _generatorPluginProvider;
-        private readonly IErrorReporter _errorReporter;
-        private readonly IProgress<Diagnostic> _progress;
+        private readonly ProgressReporter _errorReporter;
 
-        public DocumentTransformer(GeneratorPluginProvider generatorPluginProvider,
-            IErrorReporter errorReporter,
-            IProgress<Diagnostic> progress)
+        public DocumentTransformer(GeneratorPluginProvider generatorPluginProvider, ProgressReporter errorReporter)
         {
             _generatorPluginProvider = generatorPluginProvider;
             _errorReporter = errorReporter;
-            _progress = progress;
         }
 
         public async Task<SyntaxTree?> TransformAsync(CSharpCompilation compilation, Document document, CancellationToken cancellationToken)
@@ -48,7 +41,7 @@ namespace SmartCodeGenerator
             var inputSemanticModel = await document.GetSemanticModelAsync(cancellationToken);
             var inputCompilationUnit = inputSyntaxTree.GetCompilationUnitRoot();
             var generatedDocument = new GeneratedDocument(inputCompilationUnit, document);
-            var context = new TransformationContext(document, inputSemanticModel, compilation, _progress);
+            var context = new TransformationContext(document, inputSemanticModel, compilation, _errorReporter);
             var assemblyAttributes = compilation.Assembly.GetAttributes();
 
             foreach (var memberNode in GetMemberDeclarations(inputSyntaxTree))

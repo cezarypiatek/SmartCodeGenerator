@@ -6,10 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using SmartCodeGenerator.Contracts;
-using SmartCodeGenerator.PluginArchitectureDemo;
+using SmartCodeGenerator.Engine.PluginArchitectureDemo;
+using SmartCodeGenerator.Sdk;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     public class GeneratorPluginProvider
     {

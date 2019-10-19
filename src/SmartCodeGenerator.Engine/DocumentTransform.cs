@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using SmartCodeGenerator.Contracts;
+using SmartCodeGenerator.Sdk;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     public class DocumentTransformer
     {

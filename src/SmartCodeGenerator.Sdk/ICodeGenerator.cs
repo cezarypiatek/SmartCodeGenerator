@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace SmartCodeGenerator.Contracts
+namespace SmartCodeGenerator.Sdk
 {
     /// <summary>
     /// Describes a code generator that responds to attributes on members to generate code,

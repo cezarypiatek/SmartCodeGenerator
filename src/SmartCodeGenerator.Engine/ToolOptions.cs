@@ -1,6 +1,6 @@
 using CommandLine;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     class ToolOptions
     {

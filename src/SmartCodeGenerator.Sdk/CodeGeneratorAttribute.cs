@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SmartCodeGenerator.Contracts
+namespace SmartCodeGenerator.Sdk
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class CodeGeneratorAttribute:Attribute

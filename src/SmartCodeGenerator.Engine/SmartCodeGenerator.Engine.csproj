@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
-    <CodeAnalysisRuleSet></CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SmartCodeGenerator.Contracts\SmartCodeGenerator.Contracts.csproj" />
+    <ProjectReference Include="..\SmartCodeGenerator.Sdk\SmartCodeGenerator.Sdk.csproj" />
   </ItemGroup>
 </Project>

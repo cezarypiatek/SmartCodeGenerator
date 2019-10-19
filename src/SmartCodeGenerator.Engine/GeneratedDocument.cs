@@ -8,9 +8,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Simplification;
-using SmartCodeGenerator.Contracts;
+using SmartCodeGenerator.Sdk;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     internal class GeneratedDocument
     {

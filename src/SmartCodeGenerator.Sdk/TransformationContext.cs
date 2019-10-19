@@ -2,7 +2,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace SmartCodeGenerator.Contracts
+namespace SmartCodeGenerator.Sdk
 {
     /// <summary>
     ///     Provides all the inputs and context necessary to perform the code generation.

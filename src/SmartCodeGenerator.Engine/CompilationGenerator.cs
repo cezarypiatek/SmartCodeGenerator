@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     /// <summary>
     /// Runs code generation for every applicable document and handles resulting syntax trees,

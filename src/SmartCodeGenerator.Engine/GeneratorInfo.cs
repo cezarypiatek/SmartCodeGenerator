@@ -1,4 +1,4 @@
-﻿namespace SmartCodeGenerator
+﻿namespace SmartCodeGenerator.Engine
 {
     class GeneratorInfo
     {

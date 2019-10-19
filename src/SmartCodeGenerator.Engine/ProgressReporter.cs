@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     public class ProgressReporter :  IProgressReporter, IProgress<Diagnostic>, IProgress<ProjectLoadProgress>
     {

@@ -1,13 +1,11 @@
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommandLine;
 using Microsoft.Build.Locator;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 
-namespace SmartCodeGenerator
+namespace SmartCodeGenerator.Engine
 {
     class Program
     {

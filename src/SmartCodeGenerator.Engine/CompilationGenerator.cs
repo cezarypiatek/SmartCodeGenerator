@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -21,13 +22,11 @@ namespace SmartCodeGenerator.Engine
         private readonly string _intermediateOutputDirectory;
         private readonly IProgressReporter _progressReporter;
         private readonly DocumentTransformer _documentTransformer;
-        private readonly IReadOnlyList<string> _generatorAssemblySearchPaths;
 
         public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths,
             string intermediateOutputDirectory, ProgressReporter progressReporter)
         {
-            var generatorPluginProvider = new GeneratorPluginProvider(this._generatorAssemblySearchPaths);
-            _generatorAssemblySearchPaths = generatorAssemblySearchPaths;
+            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths);
             _intermediateOutputDirectory = intermediateOutputDirectory;
             _progressReporter = progressReporter;
             _documentTransformer = new DocumentTransformer(generatorPluginProvider, progressReporter);
@@ -46,13 +45,19 @@ namespace SmartCodeGenerator.Engine
                 return;
             }
 
+            var generatedFiles = new ConcurrentBag<string>();
             await project.Documents.ProcessInParallelAsync(async document =>
             {
-                await ProcessDocument(document, compilation, cancellationToken);
+                var outputFile = await ProcessDocument(document, compilation, cancellationToken);
+                if (outputFile != null)
+                {
+                    generatedFiles.Add(outputFile);
+                }
             });
+            File.WriteAllLines(Path.Combine(this._intermediateOutputDirectory,"SmartCodeGenerator.GeneratedFileList.txt"), generatedFiles);
         }
 
-        private async Task ProcessDocument(Document document, CSharpCompilation compilation, CancellationToken cancellationToken)
+        private async Task<string?> ProcessDocument(Document document, CSharpCompilation compilation, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var outputFilePath = GenerateOutputFilePath(document.FilePath);
@@ -61,7 +66,10 @@ namespace SmartCodeGenerator.Engine
             {
                 var outputText = generatedSyntaxTree.GetText(cancellationToken);
                 await TrySaveOutputText(outputFilePath, outputText, document, cancellationToken);
+                return outputFilePath;
             }
+
+            return null;
         }
 
         private readonly ThreadLocal<SHA1> _hasher = new ThreadLocal<SHA1>(SHA1.Create);

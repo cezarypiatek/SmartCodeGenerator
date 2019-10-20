@@ -2,6 +2,16 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
+    <!--<PackAsTool>DotnetCliTool</PackAsTool>
+    <ToolCommandName>smartcodegenerator</ToolCommandName>-->
+    <RepositoryUrl>https://github.com/cezarypiatek/SmartCodeGenerator</RepositoryUrl>
+    <Authors>Cezary Piątek</Authors>
+    <Company>Cezary Piątek</Company>
+    <PackageProjectUrl>https://github.com/cezarypiatek/SmartCodeGenerator</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <Version>11.0.0.0</Version>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,9 +21,27 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.3.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="3.3.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="3.3.1" />
+    <PackageReference Update="@(PackageReference)" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SmartCodeGenerator.Sdk\SmartCodeGenerator.Sdk.csproj" />
+    <ProjectReference Include="..\SmartCodeGenerator.Sdk\SmartCodeGenerator.Sdk.csproj" >
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="build/**">
+      <Pack>true</Pack>
+      <PackagePath>build/</PackagePath>
+    </None>
+  </ItemGroup>
+  <Target Name="PrePackage" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <_PackageFiles Include="$(OutputPath)\**">
+        <PackagePath>tools\%(RecursiveDir)</PackagePath>
+        <Visible>false</Visible>
+        <BuildAction>Content</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
 </Project>

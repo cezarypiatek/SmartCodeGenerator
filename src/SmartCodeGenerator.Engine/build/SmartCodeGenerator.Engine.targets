@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="GenerateFilesWithSmartCodeGenerator" BeforeTargets="CoreCompile;PrepareResources">
+    <PropertyGroup>
+      <SmartGeneratorEngineDir>$(MSBuildThisFileDirectory)/../tools</SmartGeneratorEngineDir>
+      <SmartGeneratorPlugins>@(SmartGeneratorPlugin)</SmartGeneratorPlugins>
+      <SmartGeneratorEngineOutputDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)</SmartGeneratorEngineOutputDir>
+      <SmartGeneratorGeneratedFileListFullPath>$(SmartGeneratorEngineOutputDir)\SmartCodeGenerator.GeneratedFileList.txt</SmartGeneratorGeneratedFileListFullPath>
+    </PropertyGroup>
+    <Message Text="Starting SmartCodeGenerator from $(SmartGeneratorEngineDir)" />
+    <Exec Condition="'$(SmartGeneratorPlugins)' != ''" Command="$(SmartGeneratorEngineDir)/SmartCodeGenerator.Engine.exe -p $(MSBuildProjectFullPath) -o $(SmartGeneratorEngineOutputDir) -g $(SmartGeneratorPlugins)" WorkingDirectory="$(SmartGeneratorEngineDir)"/>
+    <ReadLinesFromFile File="$(SmartGeneratorGeneratedFileListFullPath)">
+      <Output TaskParameter="Lines" ItemName="SmartGeneratorOutput_Compile"/>
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <Compile Include="@(SmartGeneratorOutput_Compile)" />
+    </ItemGroup>
+  </Target>
+</Project>

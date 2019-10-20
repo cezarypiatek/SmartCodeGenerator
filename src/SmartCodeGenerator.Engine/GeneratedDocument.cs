@@ -104,8 +104,8 @@ namespace SmartCodeGenerator.Engine
 
             var compilationUnit =
                 SyntaxFactory.CompilationUnit(
-                        SyntaxFactory.List(_emittedExterns),
-                        SyntaxFactory.List(_emittedUsings),
+                        SyntaxFactory.List(_emittedExterns.Distinct(_externalAliasComparer)),
+                        SyntaxFactory.List(_emittedUsings.Distinct(_usingComparer)),
                         SyntaxFactory.List(_emittedAttributeLists),
                         SyntaxFactory.List(_emittedMembers))
                     .WithLeadingTrivia(GeneratedByAToolPreamble)
@@ -119,6 +119,28 @@ namespace SmartCodeGenerator.Engine
 
             var simplifiedDocument = await Simplifier.ReduceAsync(fakeDocument);
             return compilationUnit.SyntaxTree.WithRootAndOptions(await simplifiedDocument.GetSyntaxRootAsync(), compilationUnit.SyntaxTree.Options);
+        }
+        private readonly GenericEqualityComparer<ExternAliasDirectiveSyntax, string> _externalAliasComparer = new GenericEqualityComparer<ExternAliasDirectiveSyntax, string>((x)=> x.Identifier.ToFullString());
+        private readonly GenericEqualityComparer<UsingDirectiveSyntax, string> _usingComparer = new GenericEqualityComparer<UsingDirectiveSyntax, string>((x)=> x.Name.ToFullString());
+
+        class GenericEqualityComparer<T, V>:IEqualityComparer<T> where V: class
+        {
+            private readonly Func<T, V> _getValueFunc;
+
+            public GenericEqualityComparer(Func<T, V> getValueFunc)
+            {
+                _getValueFunc = getValueFunc;
+            }
+
+            public bool Equals(T x, T y)
+            {
+                return _getValueFunc(x).Equals(_getValueFunc(y));
+            }
+
+            public int GetHashCode(T obj)
+            {
+                return _getValueFunc(obj).GetHashCode();
+            }
         }
     }
 }

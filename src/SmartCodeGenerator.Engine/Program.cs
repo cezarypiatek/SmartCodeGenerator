@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CommandLine;
@@ -20,8 +21,15 @@ namespace SmartCodeGenerator.Engine
             var instances = MSBuildLocator.QueryVisualStudioInstances(new VisualStudioInstanceQueryOptions()
             {
                 DiscoveryTypes = DiscoveryType.DotNetSdk | DiscoveryType.DeveloperConsole | DiscoveryType.VisualStudioSetup
-            });
-            var selectedMsBuildInstance = instances?.FirstOrDefault();
+            }).ToList();
+
+            Console.WriteLine("Available msbuild instances");
+            foreach (var visualStudioInstance in instances)
+            {
+                Console.WriteLine($"Selected msbuild {visualStudioInstance.Name} {visualStudioInstance.Version}");
+            }
+
+            var selectedMsBuildInstance = instances.FirstOrDefault();
             if (selectedMsBuildInstance == null)
             {
                 Console.WriteLine("Cannot find VisualStudio instance");
@@ -50,7 +58,10 @@ namespace SmartCodeGenerator.Engine
             var progressReporter = new ProgressReporter();
             
             MSBuildLocator.RegisterInstance(selectedMsBuildInstance);
-            using (var workspace = MSBuildWorkspace.Create())
+            using (var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>()
+            {
+                ["SmartGeneratorProcessing"]= "true"
+            }))
             {
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, progressReporter);

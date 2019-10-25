@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Update="SmartCodeGenerator.Sdk" PrivateAssets="All" />
+  </ItemGroup>
+  <Target Name="PreparePropsForPlugin" BeforeTargets="PrepareGeneratorPluginPackage">
+    <PropertyGroup>
+      <PropFileContent>
+<![CDATA[<Project>
+  <ItemGroup>
+    <SmartGeneratorPlugin Include="%24(MSBuildThisFileDirectory)/../tools/$(AssemblyName).dll" />
+  </ItemGroup>
+</Project>]]>
+      </PropFileContent>
+    </PropertyGroup>
+    <WriteLinesToFile
+      File="$(MSBuildProjectDirectory)\$(IntermediateOutputPath)\$(AssemblyName).props"
+      Overwrite="true"
+      Lines="$(PropFileContent)" />
+  </Target>
+  <Target Name="PrepareGeneratorPluginPackage" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <_PackageFiles Include="$(OutputPath)\**">
+        <PackagePath>tools\%(RecursiveDir)</PackagePath>
+        <Visible>false</Visible>
+        <BuildAction>Content</BuildAction>
+      </_PackageFiles>
+      <_PackageFiles Include="$(MSBuildProjectDirectory)\$(IntermediateOutputPath)\$(AssemblyName).props">
+        <PackagePath>build\$(PackageId).props</PackagePath>
+        <Visible>false</Visible>
+        <BuildAction>Content</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
+</Project>

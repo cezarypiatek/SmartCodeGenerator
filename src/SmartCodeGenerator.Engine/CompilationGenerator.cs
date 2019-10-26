@@ -52,11 +52,6 @@ namespace SmartCodeGenerator.Engine
                 if (outputFile != null)
                 {
                     generatedFiles.Add(outputFile);
-                    _progressReporter.ReportInfo($"NON Empty output for: {document.FilePath}");
-                }
-                else
-                {
-                    _progressReporter.ReportInfo($"Empty output for: {document.FilePath}");
                 }
             });
             var generatedListPath = Path.Combine(this._intermediateOutputDirectory,"SmartCodeGenerator.GeneratedFileList.txt");
@@ -73,7 +68,7 @@ namespace SmartCodeGenerator.Engine
             {
                 var outputText = generatedSyntaxTree.GetText(cancellationToken);
                 await TrySaveOutputText(outputFilePath, outputText, document, cancellationToken);
-                _progressReporter.ReportInfo($"Generated filed: {outputFilePath}");
+                _progressReporter.ReportInfo($"Generated file: {outputFilePath}");
                 return outputFilePath;
             }
 

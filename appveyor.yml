@@ -1,0 +1,21 @@
+version: 1.0.{build}
+image: Visual Studio 2019
+configuration: Release
+dotnet_csproj:
+  patch: true
+  file: '**\SmartCodeGenerator.Engine.csproj'
+  version: '{version}'
+  package_version: '{version}'
+  assembly_version: '{version}'
+  file_version: '{version}'
+  informational_version: '{version}'
+before_build:
+- cmd: dotnet restore src
+build:
+  project: src\SmartCodeGenerator.sln
+  verbosity: minimal
+artifacts:
+- path: src\SmartCodeGenerator.Engine\bin\Release\SmartCodeGenerator.Engine.*.nupkg
+  name: SmartCodeGenerator.Engine.*.nupkg
+- path: src\SmartCodeGenerator.Sdk\bin\Release\SmartCodeGenerator.Sdk.*.nupkg
+  name: SmartCodeGenerator.Sdk.*.nupkg

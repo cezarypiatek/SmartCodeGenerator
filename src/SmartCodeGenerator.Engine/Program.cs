@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using CommandLine;
 using Microsoft.Build.Locator;
-using Microsoft.CodeAnalysis.MSBuild;
 
 namespace SmartCodeGenerator.Engine
 {
@@ -12,75 +11,34 @@ namespace SmartCodeGenerator.Engine
     {
         static async Task<int> Main(string[] args)
         {
-
             AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
             {
                 Console.WriteLine(((Exception) eventArgs.ExceptionObject).ToString());
             };
 
-            var instances = MSBuildLocator.QueryVisualStudioInstances(new VisualStudioInstanceQueryOptions()
-            {
-                DiscoveryTypes = DiscoveryType.DotNetSdk | DiscoveryType.DeveloperConsole | DiscoveryType.VisualStudioSetup
-            }).ToList();
+            var progressReporter = new ProgressReporter();
 
-            Console.WriteLine("Available msbuild instances");
-            foreach (var visualStudioInstance in instances)
-            {
-                Console.WriteLine($"Selected msbuild {visualStudioInstance.Name} {visualStudioInstance.Version}");
-            }
-
-            var selectedMsBuildInstance = instances.FirstOrDefault();
-            if (selectedMsBuildInstance == null)
-            {
-                Console.WriteLine("Cannot find VisualStudio instance");
-                return 1;
-            }
-
-            Console.WriteLine($"Selected msbuild {selectedMsBuildInstance.Name} {selectedMsBuildInstance.Version}");
-
-            var options = ReadOptions(args);
+            var options =  OptionsHelper.LoadOptions(args, progressReporter);
             if (options == null)
             {
                 return -1;
             }
 
-            if (string.IsNullOrWhiteSpace(options.GeneratorPaths))
+            var selectedMsBuildInstance = MsBuildHelper.GetMsBuildInstance(progressReporter);
+            if (selectedMsBuildInstance == null)
             {
-                Console.WriteLine("No plugins provided. Generation skipped");
-                return 0;
+                return -1;
             }
 
-            Console.WriteLine("Run with the following options:");
-            Console.WriteLine($"{nameof(options.ProjectPath)} -> {options.ProjectPath}");
-            Console.WriteLine($"{nameof(options.OutputPath)} -> {options.OutputPath}");
-            Console.WriteLine($"{nameof(options.GeneratorPaths)} -> {options.GeneratorPaths}");
-
-            var progressReporter = new ProgressReporter();
-            
             MSBuildLocator.RegisterInstance(selectedMsBuildInstance);
-            using (var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>()
+            using (var workspace = MsBuildHelper.CreateMsBuildWorkspace(progressReporter))
             {
-                ["SmartGeneratorProcessing"]= "true"
-            }))
-            {
-                workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, progressReporter);
-                var generator = new CompilationGenerator(options.GeneratorPaths.Split(";"), options.OutputPath, progressReporter);
+                var generatorAssemblySearchPaths = options.GetGeneratorPluginsSearchPaths(progressReporter);
+                var generator = new CompilationGenerator(generatorAssemblySearchPaths, options.OutputPath, progressReporter);
                 await generator.Process(project);
             }
             return 0;
-        }
-
-        private static ToolOptions? ReadOptions(string[] args)
-        {
-            
-            ToolOptions? result = null;
-            Parser.Default.ParseArguments<ToolOptions>(args).WithParsed((options) => { result = options; }).WithNotParsed(
-                errors =>
-                {
-                    //TODO: Display help
-                });
-            return result;
         }
     }
 }

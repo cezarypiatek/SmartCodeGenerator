@@ -26,7 +26,7 @@ namespace SmartCodeGenerator.Engine
         public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths,
             string intermediateOutputDirectory, ProgressReporter progressReporter)
         {
-            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths);
+            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths, progressReporter);
             _intermediateOutputDirectory = intermediateOutputDirectory;
             _progressReporter = progressReporter;
             _documentTransformer = new DocumentTransformer(generatorPluginProvider, progressReporter);
@@ -52,9 +52,16 @@ namespace SmartCodeGenerator.Engine
                 if (outputFile != null)
                 {
                     generatedFiles.Add(outputFile);
+                    _progressReporter.ReportInfo($"NON Empty output for: {document.FilePath}");
+                }
+                else
+                {
+                    _progressReporter.ReportInfo($"Empty output for: {document.FilePath}");
                 }
             });
-            File.WriteAllLines(Path.Combine(this._intermediateOutputDirectory,"SmartCodeGenerator.GeneratedFileList.txt"), generatedFiles);
+            var generatedListPath = Path.Combine(this._intermediateOutputDirectory,"SmartCodeGenerator.GeneratedFileList.txt");
+            _progressReporter.ReportInfo($"Saving list of generated files to {generatedListPath}");
+            File.WriteAllLines(generatedListPath, generatedFiles);
         }
 
         private async Task<string?> ProcessDocument(Document document, CSharpCompilation compilation, CancellationToken cancellationToken)
@@ -66,6 +73,7 @@ namespace SmartCodeGenerator.Engine
             {
                 var outputText = generatedSyntaxTree.GetText(cancellationToken);
                 await TrySaveOutputText(outputFilePath, outputText, document, cancellationToken);
+                _progressReporter.ReportInfo($"Generated filed: {outputFilePath}");
                 return outputFilePath;
             }
 

@@ -24,6 +24,11 @@ namespace SmartCodeGenerator.Engine
             this.Report(reportDiagnostic);
         }
 
+        public void ReportInfo(string message)
+        {
+            Console.WriteLine(message);
+        }
+
         public void Report(Diagnostic diagnostic)
         {
             switch (diagnostic.DefaultSeverity)
@@ -57,5 +62,6 @@ namespace SmartCodeGenerator.Engine
     public interface IProgressReporter
     {
         void ReportError(Document inputDocument, Exception ex);
+        void ReportInfo(string message);
     }
 }

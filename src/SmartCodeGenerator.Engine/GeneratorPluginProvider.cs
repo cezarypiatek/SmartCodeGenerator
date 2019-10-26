@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -13,13 +14,16 @@ namespace SmartCodeGenerator.Engine
 {
     public class GeneratorPluginProvider
     {
+        private readonly IProgressReporter _progressReporter;
         private readonly IReadOnlyDictionary<string,Lazy<ICodeGenerator>> _generators;
 
-        public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths)
+        public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths, IProgressReporter progressReporter)
         {
+            _progressReporter = progressReporter;
             var generatorInterfaceType = typeof(ICodeGenerator);
             _generators =  generatorAssemblyPaths.SelectMany(x =>
             {
+                //Debugger.Launch();
                 var generatorLoadContext = new GeneratorLoadContext(x, typeof(ICodeGenerator).Assembly);
                 var pluginAssembly = generatorLoadContext.LoadFromAssemblyPath(x);
                 return pluginAssembly.GetTypes().Where(t => generatorInterfaceType.IsAssignableFrom(t))
@@ -36,8 +40,15 @@ namespace SmartCodeGenerator.Engine
 
         public ICodeGenerator? FindFor(AttributeData attributeData)
         {
-            _generators.TryGetValue(attributeData.AttributeClass.ToDisplayString(), out var generator);
-            return generator?.Value;
+            var key = attributeData.AttributeClass.ToDisplayString();
+            _generators.TryGetValue(key, out var generator);
+
+            var generatorValue = generator?.Value;
+            if (generatorValue == null)
+            {
+                _progressReporter.ReportInfo($"Cannot find generator for {key}. Complete list of registered generators {string.Join(", ", _generators.Keys)}");
+            }
+            return generatorValue;
         }
 
         public IEnumerable<(AttributeData, ICodeGenerator)> FindCodeGenerators(IReadOnlyCollection<AttributeData> nodeAttributes)

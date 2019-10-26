@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
-    <Version>1.0.0.0</Version>
+    <Authors>Cezary Piątek</Authors>
+    <PackageProjectUrl>https://github.com/cezarypiatek/SmartCodeGenerator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/cezarypiatek/SmartCodeGenerator</RepositoryUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 </Project>

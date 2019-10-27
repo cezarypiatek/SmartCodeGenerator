@@ -11,9 +11,11 @@
     <Exec Condition="'$(SmartGeneratorPlugins)' != ''" Command="$(SmartGeneratorEngineDir)/SmartCodeGenerator.Engine.exe -p $(MSBuildProjectFullPath) -o $(SmartGeneratorEngineOutputDir) -g $(SmartGeneratorPlugins)" WorkingDirectory="$(SmartGeneratorEngineDir)"/>
     <ReadLinesFromFile File="$(SmartGeneratorGeneratedFileListFullPath)">
       <Output TaskParameter="Lines" ItemName="SmartGeneratorOutput_Compile"/>
+      <Output TaskParameter="Lines" ItemName="FileWrites"/>
     </ReadLinesFromFile>
     <ItemGroup>
       <Compile Include="@(SmartGeneratorOutput_Compile)" />
+      <FileWrites Include="$(SmartGeneratorGeneratedFileListFullPath)" />
     </ItemGroup>
   </Target>
 </Project>

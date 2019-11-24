@@ -26,7 +26,7 @@ namespace SmartCodeGenerator.Engine
         public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths,
             string intermediateOutputDirectory, ProgressReporter progressReporter)
         {
-            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths, progressReporter);
+            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths);
             _intermediateOutputDirectory = intermediateOutputDirectory;
             _progressReporter = progressReporter;
             _documentTransformer = new DocumentTransformer(generatorPluginProvider, progressReporter);
@@ -79,7 +79,7 @@ namespace SmartCodeGenerator.Engine
 
         private string GenerateOutputFilePath(string inputDocumentFilePath)
         {
-            var sourceHash = Convert.ToBase64String(_hasher.Value.ComputeHash(Encoding.UTF8.GetBytes(inputDocumentFilePath)), 0, 6)
+            var sourceHash = Convert.ToBase64String(_hasher.Value!.ComputeHash(Encoding.UTF8.GetBytes(inputDocumentFilePath)), 0, 6)
                 .Replace('/', '-');
             return Path.Combine(this._intermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputDocumentFilePath) + $".{sourceHash}.generated.cs");
         }

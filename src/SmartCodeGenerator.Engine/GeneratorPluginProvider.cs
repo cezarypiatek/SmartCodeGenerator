@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using SmartCodeGenerator.Engine.PluginArchitectureDemo;
 using SmartCodeGenerator.Sdk;
 
@@ -14,41 +10,40 @@ namespace SmartCodeGenerator.Engine
 {
     public class GeneratorPluginProvider
     {
-        private readonly IProgressReporter _progressReporter;
         private readonly IReadOnlyDictionary<string,Lazy<ICodeGenerator>> _generators;
 
-        public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths, IProgressReporter progressReporter)
+        public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths)
         {
-            _progressReporter = progressReporter;
             var generatorInterfaceType = typeof(ICodeGenerator);
             _generators =  generatorAssemblyPaths.SelectMany(x =>
             {
-                //Debugger.Launch();
                 var generatorLoadContext = new GeneratorLoadContext(x, typeof(ICodeGenerator).Assembly);
                 var pluginAssembly = generatorLoadContext.LoadFromAssemblyPath(x);
-                return pluginAssembly.GetTypes().Where(t => generatorInterfaceType.IsAssignableFrom(t))
-                    .Select(type =>
-                    {
-                        var generatorAttribute = (CodeGeneratorAttribute?) type.GetCustomAttribute(typeof(CodeGeneratorAttribute));
-                        var key = generatorAttribute?.ProcessMarkedWith.FullName ?? Guid.NewGuid().ToString();
-                        var generator = new Lazy<ICodeGenerator>(() => (ICodeGenerator?) Activator.CreateInstance(type) ?? new EmptyGenerator());
-                        return new {key, generator};
-
-                    });
-            }).ToDictionary(el=> el.key, el=>el.generator);
+                var generatorTypes = pluginAssembly.GetTypes().Where(t => generatorInterfaceType.IsAssignableFrom(t));
+                return CreateGenerators(generatorTypes);
+            }).ToDictionary(t => t.key, t => t.generator);
         }
 
-        public ICodeGenerator? FindFor(AttributeData attributeData)
+        private static IEnumerable<(string key, Lazy<ICodeGenerator> generator)> CreateGenerators(IEnumerable<Type> generatorTypes)
+        {
+            foreach (var type in generatorTypes)
+            {
+                var generatorAttribute = (CodeGeneratorAttribute?)type.GetCustomAttribute(typeof(CodeGeneratorAttribute));
+                var key = generatorAttribute?.ProcessMarkedWith.FullName;
+                if (key == null)
+                {
+                    continue;
+                }
+                var generator = new Lazy<ICodeGenerator>(() => (ICodeGenerator)(Activator.CreateInstance(type)!));
+                yield return (key, generator);
+            }
+        }
+
+        private ICodeGenerator? FindFor(AttributeData attributeData)
         {
             var key = attributeData.AttributeClass.ToDisplayString();
             _generators.TryGetValue(key, out var generator);
-
-            var generatorValue = generator?.Value;
-            if (generatorValue == null)
-            {
-                _progressReporter.ReportInfo($"Cannot find generator for {key}. Complete list of registered generators {string.Join(", ", _generators.Keys)}");
-            }
-            return generatorValue;
+            return generator?.Value;
         }
 
         public IEnumerable<(AttributeData, ICodeGenerator)> FindCodeGenerators(IReadOnlyCollection<AttributeData> nodeAttributes)
@@ -60,14 +55,6 @@ namespace SmartCodeGenerator.Engine
                 {
                     yield return (attributeData, codeGenerator);
                 }
-            }
-        }
-
-        class EmptyGenerator:ICodeGenerator
-        {
-            public Task<GenerationResult> GenerateAsync(CSharpSyntaxNode processedNode, AttributeData markerAttribute, TransformationContext context, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(new GenerationResult());
             }
         }
     }

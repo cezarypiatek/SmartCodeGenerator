@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ApprovalTests" Version="4.2.0" />
+    <PackageReference Include="DiffPlex" Version="1.5.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="2.9.5" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.3.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="3.3.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SmartCodeGenerator.Engine\SmartCodeGenerator.Engine.csproj" />
+  </ItemGroup>
+</Project>

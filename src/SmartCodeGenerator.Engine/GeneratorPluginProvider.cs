@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
-using SmartCodeGenerator.Engine.PluginArchitectureDemo;
 using SmartCodeGenerator.Sdk;
 
 namespace SmartCodeGenerator.Engine
@@ -12,16 +11,10 @@ namespace SmartCodeGenerator.Engine
     {
         private readonly IReadOnlyDictionary<string,Lazy<ICodeGenerator>> _generators;
 
-        public GeneratorPluginProvider(IReadOnlyList<string> generatorAssemblyPaths)
+        public GeneratorPluginProvider(IGeneratorsSource generatorsSource)
         {
-            var generatorInterfaceType = typeof(ICodeGenerator);
-            _generators =  generatorAssemblyPaths.SelectMany(x =>
-            {
-                var generatorLoadContext = new GeneratorLoadContext(x, typeof(ICodeGenerator).Assembly);
-                var pluginAssembly = generatorLoadContext.LoadFromAssemblyPath(x);
-                var generatorTypes = pluginAssembly.GetTypes().Where(t => generatorInterfaceType.IsAssignableFrom(t));
-                return CreateGenerators(generatorTypes);
-            }).ToDictionary(t => t.key, t => t.generator);
+            var generatorTypes = generatorsSource.GetGeneratorTypes();
+            _generators = CreateGenerators(generatorTypes).ToDictionary(t => t.key, t => t.generator);
         }
 
         private static IEnumerable<(string key, Lazy<ICodeGenerator> generator)> CreateGenerators(IEnumerable<Type> generatorTypes)
@@ -35,7 +28,9 @@ namespace SmartCodeGenerator.Engine
                     continue;
                 }
                 var generator = new Lazy<ICodeGenerator>(() => (ICodeGenerator)(Activator.CreateInstance(type)!));
-                yield return (key, generator);
+                var valueTuple = (key, generator);
+
+                yield return valueTuple;
             }
         }
 

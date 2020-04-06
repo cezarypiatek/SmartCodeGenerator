@@ -1,35 +1,22 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
 
 namespace SmartCodeGenerator.Engine
 {
     /// <summary>
-    /// Runs code generation for every applicable document and handles resulting syntax trees,
-    /// saving them to <see cref="_intermediateOutputDirectory"/>.
+    /// Runs code generation for every applicable document and handles resulting syntax trees
     /// </summary>
     public class CompilationGenerator
     {
-        private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
-        private readonly string _intermediateOutputDirectory;
-        private readonly IProgressReporter _progressReporter;
-        private readonly DocumentTransformer _documentTransformer;
+        private readonly ITransformedDocumentPersister documentPersister;
+        private readonly DocumentTransformer documentTransformer;
 
-        public CompilationGenerator(IReadOnlyList<string> generatorAssemblySearchPaths,
-            string intermediateOutputDirectory, ProgressReporter progressReporter)
+        public CompilationGenerator(ITransformedDocumentPersister documentPersister, IGeneratorsSource generatorsSource, ProgressReporter progressReporter)
         {
-            var generatorPluginProvider = new GeneratorPluginProvider(generatorAssemblySearchPaths);
-            _intermediateOutputDirectory = intermediateOutputDirectory;
-            _progressReporter = progressReporter;
-            _documentTransformer = new DocumentTransformer(generatorPluginProvider, progressReporter);
+            this.documentPersister = documentPersister;
+            documentTransformer = new DocumentTransformer(new GeneratorPluginProvider(generatorsSource), progressReporter);
         }
 
         /// <summary>
@@ -45,69 +32,30 @@ namespace SmartCodeGenerator.Engine
                 return;
             }
 
-            var generatedFiles = new ConcurrentBag<string>();
+            
             await project.Documents.ProcessInParallelAsync(async document =>
             {
                 var outputFile = await ProcessDocument(document, compilation, cancellationToken);
                 if (outputFile != null)
                 {
-                    generatedFiles.Add(outputFile);
+                    await documentPersister.TrySaveOutputDocument(outputFile, cancellationToken);
                 }
             });
-            var generatedListPath = Path.Combine(this._intermediateOutputDirectory,"SmartCodeGenerator.GeneratedFileList.txt");
-            _progressReporter.ReportInfo($"Saving list of generated files to {generatedListPath}");
-            File.WriteAllLines(generatedListPath, generatedFiles);
+            documentPersister.SaveInfoAboutPersistedFiles();
         }
 
-        private async Task<string?> ProcessDocument(Document document, CSharpCompilation compilation, CancellationToken cancellationToken)
+        private async Task<DocumentTransformation?> ProcessDocument(Document document, CSharpCompilation compilation, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var outputFilePath = GenerateOutputFilePath(document.FilePath);
-            var generatedSyntaxTree = await _documentTransformer.TransformAsync(compilation, document, cancellationToken);
+           
+            var generatedSyntaxTree = await documentTransformer.TransformAsync(compilation, document, cancellationToken);
             if (generatedSyntaxTree != null)
             {
                 var outputText = generatedSyntaxTree.GetText(cancellationToken);
-                await TrySaveOutputText(outputFilePath, outputText, document, cancellationToken);
-                _progressReporter.ReportInfo($"Generated file: {outputFilePath}");
-                return outputFilePath;
+                return new DocumentTransformation(outputText, document);
             }
 
             return null;
-        }
-
-        private readonly ThreadLocal<SHA1> _hasher = new ThreadLocal<SHA1>(SHA1.Create);
-
-        private string GenerateOutputFilePath(string inputDocumentFilePath)
-        {
-            var sourceHash = Convert.ToBase64String(_hasher.Value!.ComputeHash(Encoding.UTF8.GetBytes(inputDocumentFilePath)), 0, 6)
-                .Replace('/', '-');
-            return Path.Combine(this._intermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputDocumentFilePath) + $".{sourceHash}.generated.cs");
-        }
-
-        private  async Task TrySaveOutputText(string outputFilePath, SourceText outputText, Document document, CancellationToken cancellationToken)
-        {
-            int retriesLeft = 3;
-            do
-            {
-                try
-                {
-                    await using var outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
-                    await using var outputWriter = new StreamWriter(outputFileStream);
-
-                    outputText.Write(outputWriter, cancellationToken);
-                    break;
-                }
-                catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
-                {
-                    retriesLeft--;
-                    await Task.Delay(200, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _progressReporter.ReportError(document, ex);
-                    break;
-                }
-            } while (true);
         }
     }
 }

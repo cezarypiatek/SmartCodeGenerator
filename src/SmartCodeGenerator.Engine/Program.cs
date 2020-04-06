@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Build.Locator;
 
@@ -35,7 +33,9 @@ namespace SmartCodeGenerator.Engine
             {
                 var project = await workspace.OpenProjectAsync(options.ProjectPath, progressReporter);
                 var generatorAssemblySearchPaths = options.GetGeneratorPluginsSearchPaths(progressReporter);
-                var generator = new CompilationGenerator(generatorAssemblySearchPaths, options.OutputPath, progressReporter);
+                var fileSystemGeneratorsSource = new FileSystemGeneratorsSource(generatorAssemblySearchPaths);
+                var transformedDocumentPersister = new TransformedDocumentPersister(options.OutputPath, progressReporter);
+                var generator = new CompilationGenerator(transformedDocumentPersister, fileSystemGeneratorsSource, progressReporter);
                 await generator.Process(project);
             }
             return 0;

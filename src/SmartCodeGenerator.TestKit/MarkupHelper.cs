@@ -9,7 +9,7 @@ namespace SmartCodeGenerator.TestKit
 {
     internal static class MarkupHelper
     {
-        public static Document GetDocumentFromCode(string code, string languageName, IReadOnlyCollection<MetadataReference> references, string projectName = null, string documentName = null)
+        public static Document GetDocumentFromCode(string code, string languageName, IReadOnlyCollection<MetadataReference>? references = null, string? projectName = null, string documentName = null)
         {
             var metadataReferences = CreateMetadataReferences(references);
 

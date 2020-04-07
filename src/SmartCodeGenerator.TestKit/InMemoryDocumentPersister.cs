@@ -7,7 +7,7 @@ using SmartCodeGenerator.Engine;
 
 namespace SmartCodeGenerator.TestKit
 {
-    class InMemoryDocumentPersister:ITransformedDocumentPersister
+    class InMemoryDocumentPersister : ITransformedDocumentPersister
     {
         private readonly ConcurrentQueue<DocumentTransformation> _transformations = new ConcurrentQueue<DocumentTransformation>();
 

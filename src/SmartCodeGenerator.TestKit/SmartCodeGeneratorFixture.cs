@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using SmartCodeGenerator.Engine;
@@ -22,15 +23,23 @@ namespace SmartCodeGenerator.TestKit
         }
 
 
-        public void AssertGeneratedCode(string inoutSourceCode, string expectedGeneratedCode)
+        public void AssertGeneratedCode(string inputSourceCode, string expectedGeneratedCode, params string[] ignorePatterns)
         {
-            var actualGeneratedCode = Transform(inoutSourceCode);
-            if (actualGeneratedCode != expectedGeneratedCode)
+            var actualGeneratedCode = Transform(inputSourceCode);
+            var expectedGeneratedCodeWithIgnores = MarkIgnoredParts(expectedGeneratedCode, ignorePatterns);
+            var actualGeneratedCodeWithIgnores = MarkIgnoredParts(actualGeneratedCode, ignorePatterns);
+
+            if (actualGeneratedCodeWithIgnores != expectedGeneratedCodeWithIgnores)
             {
-                DiffHelper.TryToReportDiffWithExternalTool(expectedGeneratedCode, actualGeneratedCode);
-                var diff = DiffHelper.GenerateInlineDiff(expectedGeneratedCode, actualGeneratedCode);
-                throw new TransformedCodeDifferentThanExpectedException(actualGeneratedCode, expectedGeneratedCode, diff);
+                DiffHelper.TryToReportDiffWithExternalTool(expectedGeneratedCodeWithIgnores, actualGeneratedCodeWithIgnores);
+                var diff = DiffHelper.GenerateInlineDiff(expectedGeneratedCodeWithIgnores, actualGeneratedCodeWithIgnores);
+                throw new TransformedCodeDifferentThanExpectedException(actualGeneratedCodeWithIgnores, expectedGeneratedCodeWithIgnores, diff);
             }
+        }
+
+        private static string MarkIgnoredParts(string text, params string[] ignorePatterns)
+        {
+            return ignorePatterns.Aggregate(text, (current, ignorePattern) => Regex.Replace(current, ignorePattern, "__IGNORED_VALUE__"));
         }
 
         public string Transform(string inoutSourceCode)
@@ -40,21 +49,6 @@ namespace SmartCodeGenerator.TestKit
             var textWriter = new StringWriter();
             inMemoryDocumentPersister.GetPersistedDocuments().FirstOrDefault()?.OutputText.Write(textWriter);
             return textWriter.ToString();
-        }
-    }
-
-    public class TransformedCodeDifferentThanExpectedException : Exception
-    {
-        public string Diff { get; }
-        public string TransformedCode { get; }
-        public string ExpectedCode { get; }
-
-        public TransformedCodeDifferentThanExpectedException(string transformedCode, string expectedCode, string diff)
-            : base($"Transformed code is different than expected:{Environment.NewLine}{diff}")
-        {
-            Diff = diff;
-            TransformedCode = transformedCode;
-            ExpectedCode = expectedCode;
         }
     }
 }

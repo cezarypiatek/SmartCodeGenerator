@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SmartCodeGenerator.Sdk;
 
-namespace SmartCodeGenerator.Engine
+namespace SmartCodeGenerator.Core
 {
     public class DocumentTransformer
     {

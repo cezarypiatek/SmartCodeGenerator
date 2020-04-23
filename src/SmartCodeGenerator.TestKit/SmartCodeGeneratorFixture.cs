@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using SmartCodeGenerator.Engine;
+using SmartCodeGenerator.Core;
 
 namespace SmartCodeGenerator.TestKit
 {

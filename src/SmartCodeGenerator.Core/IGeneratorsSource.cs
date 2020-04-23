@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SmartCodeGenerator.Engine
+namespace SmartCodeGenerator.Core
 {
     public interface IGeneratorsSource
     {

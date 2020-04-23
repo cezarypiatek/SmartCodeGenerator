@@ -21,9 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SmartCodeGenerator.Sdk\SmartCodeGenerator.Sdk.csproj">
-      <PrivateAssets>all</PrivateAssets>
-    </ProjectReference>
+    <ProjectReference Include="..\SmartCodeGenerator.Core\SmartCodeGenerator.Core.csproj" />
+    <ProjectReference Include="..\SmartCodeGenerator.Sdk\SmartCodeGenerator.Sdk.csproj" />
+    <ProjectReference Update="@(ProjectReference)" PrivateAssets="All" />
   </ItemGroup>
   <ItemGroup>
     <None Include="build/**">

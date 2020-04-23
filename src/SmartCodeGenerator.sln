@@ -12,7 +12,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartCodeGenerator.TestKit", "SmartCodeGenerator.TestKit\SmartCodeGenerator.TestKit.csproj", "{3B034035-28C3-466F-9A7F-DF549B2FFF32}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartCodeGenerator.TestKit", "SmartCodeGenerator.TestKit\SmartCodeGenerator.TestKit.csproj", "{3B034035-28C3-466F-9A7F-DF549B2FFF32}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartCodeGenerator.Core", "SmartCodeGenerator.Core\SmartCodeGenerator.Core.csproj", "{4EBB310E-F6AE-4D0B-95E3-3EB4C1682F52}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +34,10 @@ Global
 		{3B034035-28C3-466F-9A7F-DF549B2FFF32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B034035-28C3-466F-9A7F-DF549B2FFF32}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B034035-28C3-466F-9A7F-DF549B2FFF32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4EBB310E-F6AE-4D0B-95E3-3EB4C1682F52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EBB310E-F6AE-4D0B-95E3-3EB4C1682F52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EBB310E-F6AE-4D0B-95E3-3EB4C1682F52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EBB310E-F6AE-4D0B-95E3-3EB4C1682F52}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

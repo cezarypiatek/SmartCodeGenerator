@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace SmartCodeGenerator.Engine
+namespace SmartCodeGenerator.Core
 {
     /// <summary>
     /// Runs code generation for every applicable document and handles resulting syntax trees

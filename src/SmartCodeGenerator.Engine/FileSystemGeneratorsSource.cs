@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SmartCodeGenerator.Engine.PluginArchitectureDemo;
+using SmartCodeGenerator.Core;
 using SmartCodeGenerator.Sdk;
 
 namespace SmartCodeGenerator.Engine

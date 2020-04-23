@@ -1,7 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-namespace SmartCodeGenerator.Engine
+namespace SmartCodeGenerator.Core
 {
     public class DocumentTransformation
     {

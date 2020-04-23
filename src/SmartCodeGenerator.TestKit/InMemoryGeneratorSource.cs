@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using SmartCodeGenerator.Engine;
+using SmartCodeGenerator.Core;
 
 namespace SmartCodeGenerator.TestKit
 {

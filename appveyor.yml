@@ -1,4 +1,4 @@
-version: 1.3.{build}
+version: 1.4.{build}
 image: Visual Studio 2019
 configuration: Release
 dotnet_csproj:
@@ -19,3 +19,7 @@ artifacts:
   name: SmartCodeGenerator.Engine.*.nupkg
 - path: src\SmartCodeGenerator.Sdk\bin\Release\SmartCodeGenerator.Sdk.*.nupkg
   name: SmartCodeGenerator.Sdk.*.nupkg
+- path: src\SmartCodeGenerator.Core\bin\Release\SmartCodeGenerator.Core.*.nupkg
+  name: SmartCodeGenerator.Core.*.nupkg
+- path: src\SmartCodeGenerator.TestKit\bin\Release\SmartCodeGenerator.TestKit.*.nupkg
+  name: SmartCodeGenerator.TestKit.*.nupkg
